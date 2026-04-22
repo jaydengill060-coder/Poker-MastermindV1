@@ -24,4 +24,8 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
 
+## Artifacts
+
+- **ace-up-poker** (`artifacts/ace-up-poker`) — Single-player No-Limit Texas Hold'em vs 1-8 AI bots. Pure client-side React/Vite app, no backend. Real poker engine (`src/engine/`) with proper hand evaluator, side pots, min-raise enforcement, and Monte Carlo equity-based bot AI.
+
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.

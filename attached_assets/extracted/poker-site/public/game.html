@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ace Up — Table</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+<div id="game-page" style="display:block">
+  <div class="game-layout">
+
+    <!-- Header -->
+    <header class="game-header">
+      <div class="game-header-left">
+        <h2>♠ Ace Up</h2>
+        <span class="room-badge" id="room-name-badge">Loading...</span>
+        <span id="spectator-badge" style="display:none;font-size:11px;color:var(--cream-dim);background:var(--bg3);padding:3px 10px;border-radius:6px">👁 Spectating</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div class="my-chips-badge">🪙 <span id="my-chips">0</span></div>
+        <button class="btn btn-outline btn-sm" id="sitout-btn">Sit Out</button>
+        <button class="btn btn-outline btn-sm" id="addchips-game-btn">+ Chips</button>
+        <button class="btn btn-danger btn-sm" id="leave-btn">Leave Table</button>
+      </div>
+    </header>
+
+    <!-- Table Area -->
+    <div class="table-area" id="table-area">
+      <div class="felt-table" id="felt-table">
+        <div class="felt-inner"></div>
+        <div class="phase-badge" id="phase-badge">Waiting</div>
+        <div class="community-cards" id="community-cards"></div>
+        <div class="pot-display">
+          <div class="pot-label">Pot</div>
+          <div class="pot-amount" id="pot-amount">0</div>
+        </div>
+        <!-- Player seats (up to 6) -->
+        <div class="player-seat seat-0" id="seat-0" style="display:none"></div>
+        <div class="player-seat seat-1" id="seat-1" style="display:none"></div>
+        <div class="player-seat seat-2" id="seat-2" style="display:none"></div>
+        <div class="player-seat seat-3" id="seat-3" style="display:none"></div>
+        <div class="player-seat seat-4" id="seat-4" style="display:none"></div>
+        <div class="player-seat seat-5" id="seat-5" style="display:none"></div>
+
+        <!-- Showdown Banner -->
+        <div class="showdown-banner" id="showdown-banner">
+          <h3 id="sb-title">🏆 Winner!</h3>
+          <p id="sb-desc"></p>
+          <div class="winner-chips" id="sb-chips"></div>
+        </div>
+
+        <!-- Waiting Overlay -->
+        <div class="waiting-overlay" id="waiting-overlay">
+          <div class="waiting-box">
+            <h3>Waiting for Players</h3>
+            <p id="waiting-msg">Need at least 2 players to start</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Panel -->
+    <div class="action-panel" id="action-panel" style="position:relative">
+      <div class="my-hand-cards" id="my-hand-cards"></div>
+      <div class="hand-hint" id="hand-hint" style="display:none">
+        <div class="hint-label">Your Hand</div>
+        <div class="hint-name" id="hint-name">—</div>
+      </div>
+      <div class="turn-indicator" id="turn-indicator"></div>
+      <div class="action-buttons" id="action-buttons" style="display:none">
+        <button class="btn btn-danger" id="btn-fold">Fold <kbd>F</kbd></button>
+        <button class="btn btn-outline" id="btn-check">Check <kbd>C</kbd></button>
+        <div class="raise-input-group">
+          <input type="number" id="raise-amount" placeholder="Amount" min="0"/>
+          <button class="btn btn-gold" id="btn-raise">Raise <kbd>R</kbd></button>
+        </div>
+      </div>
+      <div class="timer-bar-wrap">
+        <div class="timer-bar" id="timer-bar" style="width:100%"></div>
+      </div>
+    </div>
+
+    <!-- Game Sidebar -->
+    <aside class="game-sidebar">
+      <div class="sidebar-tabs">
+        <div class="sidebar-tab active" data-gtab="log">Hand Log</div>
+        <div class="sidebar-tab" data-gtab="chat">Chat</div>
+        <div class="sidebar-tab" data-gtab="players">Players</div>
+      </div>
+
+      <div class="sidebar-content active" id="gtab-log" style="flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:3px">
+      </div>
+
+      <div class="sidebar-content" id="gtab-chat" style="display:none;flex:1;flex-direction:column;padding:8px">
+        <div id="room-chat-messages" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:4px;margin-bottom:8px"></div>
+        <div class="chat-input-row">
+          <input type="text" id="room-chat-input" placeholder="Message..." maxlength="200"/>
+          <button class="btn btn-gold btn-sm" id="room-chat-send">→</button>
+        </div>
+      </div>
+
+      <div class="sidebar-content" id="gtab-players" style="display:none;flex:1;flex-direction:column;gap:6px;padding:8px;overflow-y:auto">
+        <div id="players-list"></div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- In-game add chips modal -->
+<div class="modal-overlay" id="game-chips-modal">
+  <div class="modal">
+    <h2>Add Chips</h2>
+    <p>Chips are added instantly to your stack.</p>
+    <div class="chip-amounts">
+      <div class="chip-amount-btn" data-gamt="100">+100</div>
+      <div class="chip-amount-btn" data-gamt="500">+500</div>
+      <div class="chip-amount-btn" data-gamt="1000">+1,000</div>
+    </div>
+    <button class="btn btn-outline" id="close-game-chips-modal" style="width:100%">Cancel</button>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="game.js"></script>
+</body>
+</html>

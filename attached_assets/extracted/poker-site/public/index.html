@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ace Up — Online Poker</title>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════ AUTH PAGE ═══════════════════════════════════ -->
+<div id="auth-page">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <h1>♠ Ace Up</h1>
+      <p>Private poker for you and your crew</p>
+    </div>
+    <div class="card-panel">
+      <div class="auth-tabs">
+        <div class="auth-tab active" data-tab="login">Login</div>
+        <div class="auth-tab" data-tab="register">Register</div>
+      </div>
+
+      <!-- Login -->
+      <div id="login-form" class="auth-form">
+        <div>
+          <div class="label">Username</div>
+          <input type="text" id="login-username" placeholder="Enter username" autocomplete="username"/>
+        </div>
+        <div>
+          <div class="label">Password</div>
+          <input type="password" id="login-password" placeholder="Enter password" autocomplete="current-password"/>
+        </div>
+        <div id="login-error" class="error" style="display:none"></div>
+        <button class="btn btn-gold" id="login-btn">Log In</button>
+      </div>
+
+      <!-- Register -->
+      <div id="register-form" class="auth-form" style="display:none">
+        <div>
+          <div class="label">Username</div>
+          <input type="text" id="reg-username" placeholder="Pick a username (2–20 chars)" autocomplete="username"/>
+        </div>
+        <div>
+          <div class="label">Password</div>
+          <input type="password" id="reg-password" placeholder="At least 4 characters" autocomplete="new-password"/>
+        </div>
+        <div id="reg-error" class="error" style="display:none"></div>
+        <button class="btn btn-gold" id="register-btn">Create Account</button>
+        <p style="font-size:12px;color:var(--cream-dim);text-align:center">
+          You'll start with 1,000 free chips 🎰
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ LOBBY PAGE ══════════════════════════════════ -->
+<div id="lobby-page">
+  <div class="lobby-layout">
+
+    <!-- Header -->
+    <header class="lobby-header">
+      <div style="display:flex;align-items:center;gap:16px">
+        <h1>♠ Ace Up</h1>
+        <span id="lobby-room-count" style="font-size:12px;color:var(--cream-dim)"></span>
+      </div>
+      <div class="header-user">
+        <div class="chips-display">
+          <span class="chip-icon">🪙</span>
+          <span id="header-chips">0</span> chips
+        </div>
+        <button class="btn btn-outline btn-sm" id="add-chips-btn">+ Add Chips</button>
+        <span style="font-size:13px;color:var(--cream-dim)">Hello, <strong id="header-username"></strong></span>
+        <button class="btn btn-outline btn-sm" id="logout-btn">Logout</button>
+      </div>
+    </header>
+
+    <!-- Main -->
+    <main class="lobby-main">
+      <!-- Create Room -->
+      <div class="card-panel create-room-panel">
+        <h2 style="margin-bottom:14px;font-size:1.1rem">Create a Room</h2>
+        <div class="create-form">
+          <div>
+            <div class="label">Room Name</div>
+            <input type="text" id="room-name" placeholder="My Poker Table" maxlength="30"/>
+          </div>
+          <div>
+            <div class="label">Small Blind</div>
+            <select id="room-blind">
+              <option value="1">1 / 2</option>
+              <option value="5" selected>5 / 10</option>
+              <option value="10">10 / 20</option>
+              <option value="25">25 / 50</option>
+            </select>
+          </div>
+          <div>
+            <div class="label">Max Players</div>
+            <select id="room-maxplayers">
+              <option value="2">2</option>
+              <option value="4">4</option>
+              <option value="6" selected>6</option>
+            </select>
+          </div>
+          <div>
+            <div class="label" style="visibility:hidden">Go</div>
+            <button class="btn btn-gold" id="create-room-btn">Create Table</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Join -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h2>Active Tables</h2>
+        <button class="btn btn-outline btn-sm" id="quick-join-btn">⚡ Quick Join</button>
+      </div>
+
+      <div id="rooms-list" class="rooms-grid">
+        <div class="empty-rooms">
+          <p>🃏 No tables yet — create one above!</p>
+        </div>
+      </div>
+    </main>
+
+    <!-- Sidebar -->
+    <aside class="lobby-sidebar">
+      <div class="sidebar-tabs">
+        <div class="sidebar-tab active" data-stab="chat">Chat</div>
+        <div class="sidebar-tab" data-stab="leaderboard">🏆 Leaderboard</div>
+      </div>
+
+      <!-- Chat -->
+      <div class="sidebar-content active" id="stab-chat" style="flex:1;display:flex;flex-direction:column;padding:12px">
+        <div class="chat-messages" id="global-chat-messages" style="flex:1;overflow-y:auto"></div>
+        <div class="chat-input-row">
+          <input type="text" id="global-chat-input" placeholder="Say something..." maxlength="200"/>
+          <button class="btn btn-gold btn-sm" id="global-chat-send">→</button>
+        </div>
+      </div>
+
+      <!-- Leaderboard -->
+      <div class="sidebar-content" id="stab-leaderboard" style="padding:12px;display:none;flex-direction:column;gap:6px">
+        <div id="leaderboard-list"></div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ MODALS ══════════════════════════════════════ -->
+<!-- Add Chips Modal -->
+<div class="modal-overlay" id="add-chips-modal">
+  <div class="modal">
+    <h2>Add Chips</h2>
+    <p>Add free chips to your account — no purchase required.</p>
+    <div class="chip-amounts">
+      <div class="chip-amount-btn" data-amount="100">+100</div>
+      <div class="chip-amount-btn" data-amount="500">+500</div>
+      <div class="chip-amount-btn" data-amount="1000">+1,000</div>
+    </div>
+    <button class="btn btn-outline" id="close-chips-modal" style="width:100%">Cancel</button>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toast-container"></div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="lobby.js"></script>
+</body>
+</html>

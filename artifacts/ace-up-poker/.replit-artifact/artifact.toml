@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Ace Up Poker"
+version = "1.0.0"
+id = "artifacts/ace-up-poker"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23702
+
+[services.development]
+run = "pnpm --filter @workspace/ace-up-poker run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/ace-up-poker", "run", "build" ]
+publicDir = "artifacts/ace-up-poker/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23702"
+BASE_PATH = "/"
