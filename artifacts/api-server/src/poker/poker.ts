@@ -10,6 +10,9 @@ export interface Player {
   seat: number;
   name: string;
   chips: number; // in cents
+  buyIns: number;
+  buyBacks: number;
+  pendingBuyBack: boolean;
   holeCards: Card[];
   bet: number;
   totalCommitted: number;
@@ -89,6 +92,7 @@ export function addPlayer(s: PokerState, opts: { id: string; name: string; chips
   const seat = s.players.length;
   const p: Player = {
     id: opts.id, seat, name: opts.name, chips: opts.chips,
+    buyIns: 1, buyBacks: 0, pendingBuyBack: false,
     holeCards: [], bet: 0, totalCommitted: 0,
     folded: false, allIn: false, hasActed: false,
     sittingOut: false, inHand: false, disconnected: false,
@@ -105,6 +109,10 @@ export function removePlayer(s: PokerState, id: string): void {
   s.players = s.players.filter((pl) => pl.id !== id);
   // re-seat
   s.players.forEach((pl, i) => (pl.seat = i));
+}
+
+export function restorePlayer(s: PokerState, id: string): Player | undefined {
+  return s.players.find((pl) => pl.id === id);
 }
 
 export function startHand(s: PokerState, cfg: RoomConfig): void {

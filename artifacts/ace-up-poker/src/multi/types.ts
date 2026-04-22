@@ -23,6 +23,9 @@ export interface PublicPlayer {
   sittingOut: boolean;
   inHand: boolean;
   disconnected: boolean;
+  buyIns: number;
+  buyBacks: number;
+  pendingBuyBack: boolean;
   isHost: boolean;
   hasHoleCards: boolean;
   holeCards?: Card[];

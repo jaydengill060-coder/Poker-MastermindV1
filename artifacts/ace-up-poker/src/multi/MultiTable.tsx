@@ -36,6 +36,10 @@ export function MultiTable({ state, onLeave }: Props) {
     getSocket().emit("rebuy", null);
   };
 
+  const confirmBuyBackIn = () => {
+    getSocket().emit("confirm_buy_back_in", null);
+  };
+
   const leave = () => {
     getSocket().emit("leave_room", null, () => onLeave());
   };
@@ -124,13 +128,26 @@ export function MultiTable({ state, onLeave }: Props) {
               {me && me.bet > 0 && (
                 <div className="text-xs text-amber-200 font-mono mt-1">In this round: {fmtCents(me.bet)}</div>
               )}
-              {me && me.chips === 0 && state.phase === "handover" && (
+              {me && me.chips === 0 && !me.pendingBuyBack && (
                 <button
                   onClick={rebuy}
                   className="mt-2 w-full py-1.5 text-xs rounded bg-emerald-700 hover:bg-emerald-600 text-white font-bold"
                 >
-                  Rebuy {fmtCents(state.settings.buyInCents)}
+                  Request Buy Back-In {fmtCents(state.settings.buyInCents)}
                 </button>
+              )}
+              {me && me.pendingBuyBack && (
+                <button
+                  onClick={confirmBuyBackIn}
+                  className="mt-2 w-full py-1.5 text-xs rounded bg-amber-700 hover:bg-amber-600 text-white font-bold"
+                >
+                  Confirm Buy Back-In
+                </button>
+              )}
+              {me && (
+                <div className="mt-2 text-[11px] text-zinc-400">
+                  Buy-ins: {me.buyIns} · Buy-backs: {me.buyBacks}
+                </div>
               )}
             </div>
 

@@ -3,12 +3,14 @@ import type { Server as HttpServer } from "http";
 import {
   createRoom,
   dealNextHand,
+  confirmBuyBackIn,
   getRoom,
   getRoomByPlayerId,
   joinRoom,
   leaveRoom,
   markDisconnected,
   publicView,
+  requestBuyBackIn,
   updateSettings,
   applyPlayerAction,
   type RoomSettings,
@@ -95,10 +97,17 @@ export function attachSocket(http: HttpServer): IOServer {
     socket.on("rebuy", (_: unknown, cb?: (res: { ok: boolean; error?: string }) => void) => {
       const room = getRoomByPlayerId(socket.id);
       if (!room) return cb?.({ ok: false, error: "not in a room" });
-      const p = room.state.players.find((pl) => pl.id === socket.id);
-      if (!p) return cb?.({ ok: false, error: "not seated" });
-      if (p.inHand && !p.folded) return cb?.({ ok: false, error: "wait until next hand" });
-      p.chips = room.settings.buyInCents;
+      const result = requestBuyBackIn(room, socket.id);
+      if (!result.ok) return cb?.(result);
+      broadcast(io, room.code);
+      cb?.({ ok: true });
+    });
+
+    socket.on("confirm_buy_back_in", (_: unknown, cb?: (res: { ok: boolean; error?: string }) => void) => {
+      const room = getRoomByPlayerId(socket.id);
+      if (!room) return cb?.({ ok: false, error: "not in a room" });
+      const result = confirmBuyBackIn(room, socket.id);
+      if (!result.ok) return cb?.(result);
       broadcast(io, room.code);
       cb?.({ ok: true });
     });

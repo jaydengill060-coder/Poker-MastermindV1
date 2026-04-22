@@ -29,6 +29,9 @@ export interface PublicPlayer {
   sittingOut: boolean;
   inHand: boolean;
   disconnected: boolean;
+  buyIns: number;
+  buyBacks: number;
+  pendingBuyBack: boolean;
   isHost: boolean;
   hasHoleCards: boolean;
   // Only present for the receiving player or at showdown
@@ -93,7 +96,12 @@ export function joinRoom(opts: { code: string; playerId: string; name: string })
   const room = rooms.get(opts.code.toUpperCase());
   if (!room) return { error: "Room not found" };
   if (room.state.players.length >= 9) return { error: "Room is full (max 9)" };
-  if (room.state.players.find((p) => p.id === opts.playerId)) return { room };
+  const existing = room.state.players.find((p) => p.id === opts.playerId);
+  if (existing) {
+    existing.disconnected = false;
+    existing.sittingOut = false;
+    return { room };
+  }
   // Check for name collision
   let name = opts.name;
   let suffix = 1;
@@ -136,6 +144,32 @@ export function markDisconnected(playerId: string, disconnected: boolean): Room 
   const p = room.state.players.find((pl) => pl.id === playerId);
   if (p) p.disconnected = disconnected;
   return room;
+}
+
+export function canBuyBackIn(room: Room, playerId: string): boolean {
+  const p = room.state.players.find((pl) => pl.id === playerId);
+  return !!p && p.chips <= 0 && !p.pendingBuyBack;
+}
+
+export function requestBuyBackIn(room: Room, playerId: string): { ok: boolean; error?: string } {
+  const p = room.state.players.find((pl) => pl.id === playerId);
+  if (!p) return { ok: false, error: "not seated" };
+  if (p.chips > 0) return { ok: false, error: "player still has chips" };
+  if (p.pendingBuyBack) return { ok: false, error: "buy-back already pending" };
+  p.pendingBuyBack = true;
+  return { ok: true };
+}
+
+export function confirmBuyBackIn(room: Room, playerId: string): { ok: boolean; error?: string } {
+  const p = room.state.players.find((pl) => pl.id === playerId);
+  if (!p) return { ok: false, error: "not seated" };
+  if (!p.pendingBuyBack) return { ok: false, error: "no pending buy-back" };
+  p.chips = room.settings.buyInCents;
+  p.buyIns += 1;
+  p.buyBacks += 1;
+  p.pendingBuyBack = false;
+  p.sittingOut = false;
+  return { ok: true };
 }
 
 export function updateSettings(room: Room, settings: Partial<RoomSettings>) {
@@ -188,6 +222,9 @@ export function publicView(room: Room, viewerId: string): PublicState {
       sittingOut: p.sittingOut,
       inHand: p.inHand,
       disconnected: p.disconnected,
+      buyIns: p.buyIns,
+      buyBacks: p.buyBacks,
+      pendingBuyBack: p.pendingBuyBack,
       isHost: room.hostId === p.id,
       hasHoleCards: p.holeCards.length > 0,
       holeCards: (p.id === viewerId || (reveal && p.inHand && !p.folded)) ? p.holeCards : undefined,
