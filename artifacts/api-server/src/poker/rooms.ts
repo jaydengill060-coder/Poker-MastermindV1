@@ -32,10 +32,58 @@ export interface PublicPlayer {
   buyIns: number;
   buyBacks: number;
   pendingBuyBack: boolean;
+  handsPlayed: number;
+  handsWon: number;
   isHost: boolean;
   hasHoleCards: boolean;
   // Only present for the receiving player or at showdown
   holeCards?: { suit: string; rank: number }[];
+}
+
+export interface EndGameVote {
+  initiatorId: string;
+  initiatorName: string;
+  votes: Record<string, "yes" | "no">;
+  startedAt: number;
+}
+
+export interface PublicEndGameVote {
+  initiatorName: string;
+  yes: number;
+  no: number;
+  needed: number;
+  total: number;
+  voters: { playerId: string; name: string; vote: "yes" | "no" | null }[];
+  yourVote: "yes" | "no" | null;
+}
+
+export interface SettlementTransfer {
+  fromId: string;
+  fromName: string;
+  toId: string;
+  toName: string;
+  cents: number;
+}
+
+export interface FinalSummaryPlayer {
+  id: string;
+  name: string;
+  buyIns: number;
+  buyBacks: number;
+  totalInvestedCents: number;
+  finalChipsCents: number;
+  netCents: number;
+  handsPlayed: number;
+  handsWon: number;
+  winRate: number;
+}
+
+export interface FinalSummary {
+  endedAt: number;
+  buyInCents: number;
+  totalHands: number;
+  players: FinalSummaryPlayer[];
+  settlements: SettlementTransfer[];
 }
 
 export interface PublicState {
@@ -56,6 +104,9 @@ export interface PublicState {
   yourId: string;
   yourLegalActions: ReturnType<typeof import("./poker").legalActions>;
   isHost: boolean;
+  endVote: PublicEndGameVote | null;
+  gameEnded: boolean;
+  finalSummary: FinalSummary | null;
 }
 
 export interface Room {
@@ -64,6 +115,9 @@ export interface Room {
   settings: RoomSettings;
   state: PokerState;
   inGame: boolean;
+  endVote: EndGameVote | null;
+  gameEnded: boolean;
+  finalSummary: FinalSummary | null;
 }
 
 const rooms = new Map<string, Room>();
@@ -86,6 +140,9 @@ export function createRoom(opts: { hostId: string; hostName: string; settings: R
     settings: opts.settings,
     state: newState(),
     inGame: false,
+    endVote: null,
+    gameEnded: false,
+    finalSummary: null,
   };
   addPlayer(room.state, { id: opts.hostId, name: opts.hostName, chips: opts.settings.buyInCents });
   rooms.set(code, room);
@@ -225,6 +282,8 @@ export function publicView(room: Room, viewerId: string): PublicState {
       buyIns: p.buyIns,
       buyBacks: p.buyBacks,
       pendingBuyBack: p.pendingBuyBack,
+      handsPlayed: p.handsPlayed,
+      handsWon: p.handsWon,
       isHost: room.hostId === p.id,
       hasHoleCards: p.holeCards.length > 0,
       holeCards: (p.id === viewerId || (reveal && p.inHand && !p.folded)) ? p.holeCards : undefined,
@@ -234,5 +293,160 @@ export function publicView(room: Room, viewerId: string): PublicState {
     yourId: viewerId,
     yourLegalActions: legalActions(room.state, viewerId),
     isHost: room.hostId === viewerId,
+    endVote: publicEndVote(room, viewerId),
+    gameEnded: room.gameEnded,
+    finalSummary: room.finalSummary,
   };
+}
+
+function eligibleVoters(room: Room): { id: string; name: string }[] {
+  return room.state.players
+    .filter((p) => !p.disconnected)
+    .map((p) => ({ id: p.id, name: p.name }));
+}
+
+function publicEndVote(room: Room, viewerId: string): PublicEndGameVote | null {
+  const v = room.endVote;
+  if (!v) return null;
+  const voters = eligibleVoters(room);
+  const total = voters.length;
+  const needed = Math.floor(total / 2) + 1;
+  let yes = 0;
+  let no = 0;
+  for (const e of voters) {
+    const cast = v.votes[e.id];
+    if (cast === "yes") yes++;
+    else if (cast === "no") no++;
+  }
+  return {
+    initiatorName: v.initiatorName,
+    yes,
+    no,
+    needed,
+    total,
+    voters: voters.map((e) => ({ playerId: e.id, name: e.name, vote: v.votes[e.id] ?? null })),
+    yourVote: v.votes[viewerId] ?? null,
+  };
+}
+
+export type VoteResolution = "passed" | "failed" | "pending";
+
+export function startEndGameVote(room: Room, initiatorId: string): { ok: boolean; error?: string } {
+  if (room.gameEnded) return { ok: false, error: "game already ended" };
+  if (room.endVote) return { ok: false, error: "vote already in progress" };
+  const initiator = room.state.players.find((p) => p.id === initiatorId);
+  if (!initiator) return { ok: false, error: "not in this room" };
+  const eligible = eligibleVoters(room);
+  if (eligible.length < 2) return { ok: false, error: "need at least 2 connected players" };
+  room.endVote = {
+    initiatorId,
+    initiatorName: initiator.name,
+    votes: { [initiatorId]: "yes" },
+    startedAt: Date.now(),
+  };
+  return { ok: true };
+}
+
+export function castEndGameVote(room: Room, voterId: string, agree: boolean): { ok: boolean; error?: string } {
+  if (!room.endVote) return { ok: false, error: "no vote in progress" };
+  const eligible = eligibleVoters(room);
+  if (!eligible.find((e) => e.id === voterId)) return { ok: false, error: "not eligible to vote" };
+  if (room.endVote.votes[voterId]) return { ok: false, error: "already voted" };
+  room.endVote.votes[voterId] = agree ? "yes" : "no";
+  return { ok: true };
+}
+
+export function resolveEndGameVote(room: Room): VoteResolution {
+  if (!room.endVote) return "pending";
+  const eligible = eligibleVoters(room);
+  const total = eligible.length;
+  const needed = Math.floor(total / 2) + 1;
+  let yes = 0;
+  let no = 0;
+  let pending = 0;
+  for (const e of eligible) {
+    const v = room.endVote.votes[e.id];
+    if (v === "yes") yes++;
+    else if (v === "no") no++;
+    else pending++;
+  }
+  const maxPossibleYes = yes + pending;
+  if (yes >= needed) {
+    room.endVote = null;
+    finalizeGame(room);
+    return "passed";
+  }
+  if (maxPossibleYes < needed) {
+    room.endVote = null;
+    return "failed";
+  }
+  return "pending";
+}
+
+export function cancelEndGameVote(room: Room, requesterId: string): { ok: boolean; error?: string } {
+  if (!room.endVote) return { ok: false, error: "no vote in progress" };
+  if (room.endVote.initiatorId !== requesterId) return { ok: false, error: "only initiator can cancel" };
+  room.endVote = null;
+  return { ok: true };
+}
+
+function finalizeGame(room: Room): void {
+  const buyIn = room.settings.buyInCents;
+  const players: FinalSummaryPlayer[] = room.state.players.map((p) => {
+    const totalInvested = p.buyIns * buyIn;
+    const net = p.chips - totalInvested;
+    const winRate = p.handsPlayed > 0 ? p.handsWon / p.handsPlayed : 0;
+    return {
+      id: p.id,
+      name: p.name,
+      buyIns: p.buyIns,
+      buyBacks: p.buyBacks,
+      totalInvestedCents: totalInvested,
+      finalChipsCents: p.chips,
+      netCents: net,
+      handsPlayed: p.handsPlayed,
+      handsWon: p.handsWon,
+      winRate,
+    };
+  });
+  const settlements = computeSettlements(players);
+  room.finalSummary = {
+    endedAt: Date.now(),
+    buyInCents: buyIn,
+    totalHands: room.state.handNumber,
+    players,
+    settlements,
+  };
+  room.gameEnded = true;
+  room.state.phase = "handover";
+  room.state.toActSeat = -1;
+}
+
+function computeSettlements(players: FinalSummaryPlayer[]): SettlementTransfer[] {
+  // Build creditors (positive net) and debtors (negative net)
+  const creditors = players
+    .filter((p) => p.netCents > 0)
+    .map((p) => ({ id: p.id, name: p.name, remaining: p.netCents }))
+    .sort((a, b) => b.remaining - a.remaining);
+  const debtors = players
+    .filter((p) => p.netCents < 0)
+    .map((p) => ({ id: p.id, name: p.name, remaining: -p.netCents }))
+    .sort((a, b) => b.remaining - a.remaining);
+
+  const transfers: SettlementTransfer[] = [];
+  let ci = 0;
+  let di = 0;
+  while (ci < creditors.length && di < debtors.length) {
+    const c = creditors[ci];
+    const d = debtors[di];
+    const amount = Math.min(c.remaining, d.remaining);
+    if (amount > 0) {
+      transfers.push({ fromId: d.id, fromName: d.name, toId: c.id, toName: c.name, cents: amount });
+    }
+    c.remaining -= amount;
+    d.remaining -= amount;
+    if (c.remaining === 0) ci++;
+    if (d.remaining === 0) di++;
+  }
+  return transfers;
 }

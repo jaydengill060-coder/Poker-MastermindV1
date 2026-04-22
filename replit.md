@@ -26,6 +26,6 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 ## Artifacts
 
-- **ace-up-poker** (`artifacts/ace-up-poker`) — Online multiplayer No-Limit Texas Hold'em. React/Vite client connects via Socket.IO to the shared `api-server` artifact (`src/poker/`). Players host or join lobbies via 5-character codes (up to 9 seats). Configurable buy-in ($0.50/$1/$5/$10), pay mode (small/big blinds OR flat ante per hand), and blind/ante levels. Real poker engine with proper hand evaluator, side pots, min-raise enforcement, and dealer rotation. Server holds in-memory room state.
+- **ace-up-poker** (`artifacts/ace-up-poker`) — Online multiplayer No-Limit Texas Hold'em. React/Vite client connects via Socket.IO to the shared `api-server` artifact (`src/poker/`). Players host or join lobbies via 5-character codes (up to 9 seats). Configurable buy-in ($0.50/$1/$5/$10), pay mode (small/big blinds OR flat ante per hand), and blind/ante levels. Real poker engine with proper hand evaluator, side pots, min-raise enforcement, and dealer rotation. Tracks per-player buy-ins/buy-backs, hands played and hands won. Players can call a majority vote to end the game, which produces a final settlement screen (P/L per player, who-owes-who, win rate). Server holds in-memory room state.
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.

@@ -26,6 +26,8 @@ export interface PublicPlayer {
   buyIns: number;
   buyBacks: number;
   pendingBuyBack: boolean;
+  handsPlayed: number;
+  handsWon: number;
   isHost: boolean;
   hasHoleCards: boolean;
   holeCards?: Card[];
@@ -54,6 +56,45 @@ export interface LegalActions {
   maxRaiseTo: number;
 }
 
+export interface PublicEndGameVote {
+  initiatorName: string;
+  yes: number;
+  no: number;
+  needed: number;
+  total: number;
+  voters: { playerId: string; name: string; vote: "yes" | "no" | null }[];
+  yourVote: "yes" | "no" | null;
+}
+
+export interface SettlementTransfer {
+  fromId: string;
+  fromName: string;
+  toId: string;
+  toName: string;
+  cents: number;
+}
+
+export interface FinalSummaryPlayer {
+  id: string;
+  name: string;
+  buyIns: number;
+  buyBacks: number;
+  totalInvestedCents: number;
+  finalChipsCents: number;
+  netCents: number;
+  handsPlayed: number;
+  handsWon: number;
+  winRate: number;
+}
+
+export interface FinalSummary {
+  endedAt: number;
+  buyInCents: number;
+  totalHands: number;
+  players: FinalSummaryPlayer[];
+  settlements: SettlementTransfer[];
+}
+
 export interface PublicState {
   code: string;
   hostId: string;
@@ -72,6 +113,9 @@ export interface PublicState {
   yourId: string;
   yourLegalActions: LegalActions;
   isHost: boolean;
+  endVote: PublicEndGameVote | null;
+  gameEnded: boolean;
+  finalSummary: FinalSummary | null;
 }
 
 export type ActionInput =

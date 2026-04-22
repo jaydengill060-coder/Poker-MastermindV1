@@ -44,6 +44,22 @@ export function MultiTable({ state, onLeave }: Props) {
     getSocket().emit("leave_room", null, () => onLeave());
   };
 
+  const startEndVote = () => {
+    getSocket().emit("start_end_game_vote", null);
+  };
+
+  const castVote = (agree: boolean) => {
+    getSocket().emit("cast_end_game_vote", { agree });
+  };
+
+  const cancelEndVote = () => {
+    getSocket().emit("cancel_end_game_vote", null);
+  };
+
+  const endVote = state.endVote;
+  const myVote = endVote?.yourVote ?? null;
+  const isVoteInitiator = endVote && state.players.find((p) => p.id === state.yourId)?.name === endVote.initiatorName;
+
   const canStartNext = state.phase === "handover" && state.players.filter((p) => p.chips > 0 && !p.disconnected).length >= 2;
   const opts = state.yourLegalActions;
 
@@ -79,10 +95,77 @@ export function MultiTable({ state, onLeave }: Props) {
                 : `${fmtCents(state.settings.anteCents)} ante`} · {phaseLabel}
             </div>
           </div>
-          <button onClick={leave} className="px-3 py-1.5 text-sm rounded-md border border-white/10 text-zinc-300 hover:bg-white/5">
-            Leave
-          </button>
+          <div className="flex items-center gap-2">
+            {!endVote && (
+              <button
+                onClick={startEndVote}
+                className="px-3 py-1.5 text-sm rounded-md border border-rose-700/60 text-rose-200 hover:bg-rose-900/30"
+              >
+                End Game
+              </button>
+            )}
+            <button onClick={leave} className="px-3 py-1.5 text-sm rounded-md border border-white/10 text-zinc-300 hover:bg-white/5">
+              Leave
+            </button>
+          </div>
         </div>
+
+        {endVote && (
+          <div className="mb-4 rounded-xl border border-amber-300/40 bg-amber-300/10 p-4">
+            <div className="flex items-start justify-between gap-4 mb-3">
+              <div>
+                <div className="text-amber-200 font-bold">
+                  {endVote.initiatorName} called a vote to end the game
+                </div>
+                <div className="text-xs text-amber-100/70 mt-1">
+                  Needs {endVote.needed} of {endVote.total} players to agree · {endVote.yes} yes · {endVote.no} no
+                </div>
+              </div>
+              {isVoteInitiator && (
+                <button
+                  onClick={cancelEndVote}
+                  className="text-xs text-amber-200/70 hover:text-amber-100 underline"
+                >
+                  Cancel vote
+                </button>
+              )}
+            </div>
+            {myVote === null ? (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => castVote(true)}
+                  className="flex-1 py-2 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white font-bold uppercase tracking-wide text-sm"
+                >
+                  Yes, end game
+                </button>
+                <button
+                  onClick={() => castVote(false)}
+                  className="flex-1 py-2 rounded-md bg-rose-700 hover:bg-rose-600 text-white font-bold uppercase tracking-wide text-sm"
+                >
+                  No, keep playing
+                </button>
+              </div>
+            ) : (
+              <div className="text-xs text-amber-100/80">
+                You voted <span className="font-bold uppercase">{myVote}</span>. Waiting for the rest...
+              </div>
+            )}
+            <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-1 text-xs">
+              {endVote.voters.map((v) => (
+                <div key={v.playerId} className="flex items-center justify-between px-2 py-1 rounded bg-black/20">
+                  <span className="truncate">{v.name}</span>
+                  <span className={
+                    v.vote === "yes" ? "text-emerald-300 font-bold"
+                    : v.vote === "no" ? "text-rose-300 font-bold"
+                    : "text-zinc-500"
+                  }>
+                    {v.vote === "yes" ? "YES" : v.vote === "no" ? "NO" : "..."}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="grid lg:grid-cols-[1fr_280px] gap-4">
           <div className="relative aspect-[16/10] rounded-[120px] border-[12px] border-amber-900/60 shadow-2xl overflow-visible"

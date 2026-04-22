@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { EndGameSummary } from "@/multi/EndGameSummary";
 import { Home } from "@/multi/Home";
 import { Lobby } from "@/multi/Lobby";
 import { MultiTable } from "@/multi/MultiTable";
@@ -46,7 +47,11 @@ export default function App() {
     return <Home onJoined={() => setJoined(true)} />;
   }
 
-  if (state.phase === "idle" || (state.phase === "handover" && state.handNumber === 0)) {
+  if (state.gameEnded && state.finalSummary) {
+    return <EndGameSummary summary={state.finalSummary} code={state.code} onLeave={handleLeave} />;
+  }
+
+  if (!state.gameEnded && (state.phase === "idle" || (state.phase === "handover" && state.handNumber === 0))) {
     return <Lobby state={state} onLeave={handleLeave} />;
   }
 

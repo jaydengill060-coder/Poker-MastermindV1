@@ -13,6 +13,8 @@ export interface Player {
   buyIns: number;
   buyBacks: number;
   pendingBuyBack: boolean;
+  handsPlayed: number;
+  handsWon: number;
   holeCards: Card[];
   bet: number;
   totalCommitted: number;
@@ -93,6 +95,7 @@ export function addPlayer(s: PokerState, opts: { id: string; name: string; chips
   const p: Player = {
     id: opts.id, seat, name: opts.name, chips: opts.chips,
     buyIns: 1, buyBacks: 0, pendingBuyBack: false,
+    handsPlayed: 0, handsWon: 0,
     holeCards: [], bet: 0, totalCommitted: 0,
     folded: false, allIn: false, hasActed: false,
     sittingOut: false, inHand: false, disconnected: false,
@@ -156,7 +159,10 @@ export function startHand(s: PokerState, cfg: RoomConfig): void {
   if (s.dealerSeat < 0) s.dealerSeat = inHand[0].seat;
   else s.dealerSeat = nextSeated(s, s.dealerSeat);
 
-  for (const p of inHand) p.inHand = true;
+  for (const p of inHand) {
+    p.inHand = true;
+    p.handsPlayed += 1;
+  }
 
   if (s.rakeMode === "ante") {
     // Each player posts ante
@@ -359,6 +365,7 @@ function advancePhase(s: PokerState) {
 
 function awardUncontested(s: PokerState, winner: Player) {
   winner.chips += s.pot;
+  winner.handsWon += 1;
   pushLog(s, `${winner.name} wins ${formatCents(s.pot)} (everyone else folded)`);
   s.lastWinnerSummary = `${winner.name} wins ${formatCents(s.pot)}`;
   s.showdownResults = [{
@@ -397,6 +404,7 @@ function doShowdown(s: PokerState) {
   const evaluationsList: ShowdownEval[] = contenders.map((p) => ({ playerId: p.id, name: p.name, bestHand: evals.get(p.id)! }));
 
   const results: ShowdownResult[] = [];
+  const winnersThisHand = new Set<string>();
   pots.forEach((pot, idx) => {
     const eligibles = contenders.filter((c) => pot.eligibleIds.includes(c.id));
     if (eligibles.length === 0) return;
@@ -418,9 +426,14 @@ function doShowdown(s: PokerState) {
     });
     results.push({ potIndex: idx, potAmount: pot.amount, winners: entries, evaluations: evaluationsList });
     for (const w of entries) {
+      winnersThisHand.add(w.playerId);
       pushLog(s, `${w.name} wins ${formatCents(w.share)} (${evals.get(w.playerId)?.name})${pots.length > 1 ? ` — pot #${idx + 1}` : ""}`);
     }
   });
+  for (const id of winnersThisHand) {
+    const p = s.players.find((pl) => pl.id === id);
+    if (p) p.handsWon += 1;
+  }
 
   s.showdownResults = results;
   if (results.length > 0) {

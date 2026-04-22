@@ -1,6 +1,8 @@
 import { Server as IOServer, type Socket } from "socket.io";
 import type { Server as HttpServer } from "http";
 import {
+  cancelEndGameVote,
+  castEndGameVote,
   createRoom,
   dealNextHand,
   confirmBuyBackIn,
@@ -11,6 +13,8 @@ import {
   markDisconnected,
   publicView,
   requestBuyBackIn,
+  resolveEndGameVote,
+  startEndGameVote,
   updateSettings,
   applyPlayerAction,
   type RoomSettings,
@@ -98,6 +102,38 @@ export function attachSocket(http: HttpServer): IOServer {
       const room = getRoomByPlayerId(socket.id);
       if (!room) return cb?.({ ok: false, error: "not in a room" });
       const result = requestBuyBackIn(room, socket.id);
+      if (!result.ok) return cb?.(result);
+      broadcast(io, room.code);
+      cb?.({ ok: true });
+    });
+
+    socket.on("start_end_game_vote", (_: unknown, cb?: (res: { ok: boolean; error?: string }) => void) => {
+      const room = getRoomByPlayerId(socket.id);
+      if (!room) return cb?.({ ok: false, error: "not in a room" });
+      const result = startEndGameVote(room, socket.id);
+      if (!result.ok) return cb?.(result);
+      resolveEndGameVote(room);
+      broadcast(io, room.code);
+      cb?.({ ok: true });
+    });
+
+    socket.on("cast_end_game_vote", (
+      payload: { agree: boolean },
+      cb?: (res: { ok: boolean; error?: string }) => void,
+    ) => {
+      const room = getRoomByPlayerId(socket.id);
+      if (!room) return cb?.({ ok: false, error: "not in a room" });
+      const result = castEndGameVote(room, socket.id, !!payload?.agree);
+      if (!result.ok) return cb?.(result);
+      resolveEndGameVote(room);
+      broadcast(io, room.code);
+      cb?.({ ok: true });
+    });
+
+    socket.on("cancel_end_game_vote", (_: unknown, cb?: (res: { ok: boolean; error?: string }) => void) => {
+      const room = getRoomByPlayerId(socket.id);
+      if (!room) return cb?.({ ok: false, error: "not in a room" });
+      const result = cancelEndGameVote(room, socket.id);
       if (!result.ok) return cb?.(result);
       broadcast(io, room.code);
       cb?.({ ok: true });
