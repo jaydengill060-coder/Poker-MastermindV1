@@ -200,7 +200,26 @@ export function markDisconnected(playerId: string, disconnected: boolean): Room 
   if (!room) return undefined;
   const p = room.state.players.find((pl) => pl.id === playerId);
   if (p) p.disconnected = disconnected;
+  if (disconnected) autoActDisconnected(room);
   return room;
+}
+
+// While the player whose turn it is is disconnected, auto-check (if free) or
+// auto-fold so the table never stalls. Called whenever someone disconnects or
+// after their action would otherwise be needed.
+export function autoActDisconnected(room: Room): void {
+  // Up to N safety iterations to advance through any chain of disconnected players.
+  for (let i = 0; i < 20; i++) {
+    const s = room.state;
+    if (s.toActSeat < 0) return;
+    const seat = s.players.find((p) => p.seat === s.toActSeat);
+    if (!seat || !seat.disconnected) return;
+    const opts = legalActions(s, seat.id);
+    if (!opts.canFold && !opts.canCheck && !opts.canCall) return;
+    const action: ActionInput = opts.canCheck ? { type: "check" } : { type: "fold" };
+    const res = applyAction(s, seat.id, action);
+    if (!res.ok) return;
+  }
 }
 
 export function canBuyBackIn(room: Room, playerId: string): boolean {

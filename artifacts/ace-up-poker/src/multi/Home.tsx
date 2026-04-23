@@ -15,7 +15,7 @@ export function Home({ onJoined }: Props) {
 
   const [buyIn, setBuyIn] = useState(100);
   const [rakeMode, setRakeMode] = useState<RakeMode>("blinds");
-  const [blindIdx, setBlindIdx] = useState(1);
+  const [blindIdx, setBlindIdx] = useState(0);
   const [ante, setAnte] = useState(50);
 
   const trimmedName = name.trim();

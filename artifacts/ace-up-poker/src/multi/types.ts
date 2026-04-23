@@ -132,6 +132,7 @@ export function fmtCents(c: number): string {
 
 export const BUY_IN_OPTIONS = [50, 100, 500, 1000];
 export const BLIND_OPTIONS: { sb: number; bb: number; label: string }[] = [
+  { sb: 50, bb: 100, label: "$0.50 / $1.00" },
   { sb: 1, bb: 2, label: "$0.01 / $0.02" },
   { sb: 5, bb: 10, label: "$0.05 / $0.10" },
   { sb: 10, bb: 25, label: "$0.10 / $0.25" },
