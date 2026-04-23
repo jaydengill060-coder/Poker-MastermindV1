@@ -157,7 +157,7 @@ export function startHand(s: PokerState, cfg: RoomConfig): void {
 
   // Advance dealer (or initialize)
   if (s.dealerSeat < 0) s.dealerSeat = inHand[0].seat;
-  else s.dealerSeat = nextSeated(s, s.dealerSeat);
+  else s.dealerSeat = nextOccupiedSeat(s, s.dealerSeat);
 
   for (const p of inHand) {
     p.inHand = true;
@@ -225,6 +225,13 @@ function seatPlayer(s: PokerState, seat: number): Player {
 
 function nextSeated(s: PokerState, fromSeat: number): number {
   const seats = s.players.filter((p) => !p.sittingOut).map((p) => p.seat).sort((a, b) => a - b);
+  if (seats.length === 0) return fromSeat;
+  const greater = seats.find((sn) => sn > fromSeat);
+  return greater !== undefined ? greater : seats[0];
+}
+
+function nextOccupiedSeat(s: PokerState, fromSeat: number): number {
+  const seats = s.players.filter((p) => p.chips > 0).map((p) => p.seat).sort((a, b) => a - b);
   if (seats.length === 0) return fromSeat;
   const greater = seats.find((sn) => sn > fromSeat);
   return greater !== undefined ? greater : seats[0];
