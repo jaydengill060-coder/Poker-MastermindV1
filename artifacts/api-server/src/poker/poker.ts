@@ -150,7 +150,7 @@ export function startHand(s: PokerState, cfg: RoomConfig): void {
   s.community = [];
   s.pot = 0;
   s.currentBet = 0;
-  s.lastRaiseSize = Math.max(s.bigBlind, 1);
+  s.lastRaiseSize = Math.max(s.bigBlind, 50);
   s.handNumber += 1;
   s.showdownResults = undefined;
   s.lastWinnerSummary = undefined;
@@ -248,7 +248,7 @@ export function legalActions(s: PokerState, playerId: string) {
   const callAmount = Math.max(0, s.currentBet - p.bet);
   const canCheck = callAmount === 0;
   const canCall = callAmount > 0 && p.chips > 0;
-  const minRaiseTo = Math.min(p.chips + p.bet, s.currentBet + Math.max(s.lastRaiseSize, s.bigBlind || 1));
+  const minRaiseTo = Math.min(p.chips + p.bet, s.currentBet + Math.max(s.lastRaiseSize, 50));
   const maxRaiseTo = p.chips + p.bet;
   const canRaise = p.chips > callAmount;
   return { canFold: true, canCheck, canCall, callAmount: Math.min(callAmount, p.chips), canRaise, minRaiseTo, maxRaiseTo };
@@ -285,12 +285,12 @@ export function applyAction(s: PokerState, playerId: string, action: ActionInput
     case "allin": {
       let raiseTo: number;
       if (action.type === "allin") raiseTo = p.chips + p.bet;
-      else raiseTo = action.raiseTo ?? s.currentBet + Math.max(s.lastRaiseSize, s.bigBlind || 1);
+      else raiseTo = action.raiseTo ?? s.currentBet + Math.max(s.lastRaiseSize, 50);
       raiseTo = Math.min(raiseTo, p.chips + p.bet);
       const totalDelta = raiseTo - p.bet;
       if (totalDelta <= 0) return applyAction(s, playerId, { type: callAmount > 0 ? "call" : "check" });
       const raiseSize = raiseTo - s.currentBet;
-      const isFullRaise = raiseSize >= Math.max(s.lastRaiseSize, s.bigBlind || 1);
+      const isFullRaise = raiseSize >= Math.max(s.lastRaiseSize, 50);
       p.chips -= totalDelta; p.bet += totalDelta; p.totalCommitted += totalDelta; s.pot += totalDelta;
       if (p.chips === 0) p.allIn = true;
       const wasOpen = s.currentBet === 0;
