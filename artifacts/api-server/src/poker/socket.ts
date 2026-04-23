@@ -23,10 +23,10 @@ import {
 import type { ActionInput } from "./poker";
 import { logger } from "../lib/logger";
 
-// 30s grace period — only used after the game has been formally ended.
+// 20s grace period — only used after the game has been formally ended.
 // While the game is still in progress, players are NEVER auto-evicted, so
 // they can reconnect at any time and resume their seat & chips.
-const POST_GAME_EVICT_MS = 30_000;
+const POST_GAME_EVICT_MS = 20_000;
 
 function pidOf(socket: Socket): string {
   return (socket.data?.playerId as string | undefined) ?? socket.id;
@@ -205,7 +205,6 @@ export function attachSocket(http: HttpServer): IOServer {
         if (anySocketForPlayer(io, playerId)) return;
         const room = markDisconnected(playerId, true);
         if (room) broadcast(io, room.code);
-
         // Only auto-evict AFTER the game has been formally ended (so they
         // don't linger in a dead room forever). While the game is still
         // running, never kick — they can come back at any time.

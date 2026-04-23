@@ -200,7 +200,6 @@ export function markDisconnected(playerId: string, disconnected: boolean): Room 
   if (!room) return undefined;
   const p = room.state.players.find((pl) => pl.id === playerId);
   if (p) p.disconnected = disconnected;
-  if (disconnected) autoActDisconnected(room);
   return room;
 }
 
