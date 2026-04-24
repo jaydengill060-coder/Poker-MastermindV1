@@ -3,6 +3,7 @@ import { getSocket } from "./socket";
 import { fmtCents, type ActionInput, type PublicPlayer, type PublicState } from "./types";
 import { PlayingCard } from "@/components/PlayingCard";
 import { AllInBurst } from "./AllInBurst";
+import { TableMood } from "./TableMood";
 
 interface Props {
   state: PublicState;
@@ -186,6 +187,7 @@ export function MultiTable({ state, onLeave }: Props) {
           <div className="relative aspect-[16/10] rounded-[120px] border-[12px] border-amber-900/60 shadow-2xl overflow-visible"
             style={{ background: "radial-gradient(ellipse at center, #115c3f 0%, #0a3d2a 70%, #062719 100%)" }}
           >
+            <TableMood />
             <div className="absolute inset-4 rounded-[100px] border border-emerald-900/50 pointer-events-none" />
 
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
