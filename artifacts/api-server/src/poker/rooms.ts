@@ -333,7 +333,7 @@ export function publicView(room: Room, viewerId: string): PublicState {
   };
 }
 
-function computeViewerLearning(room: Room, viewerId: string): LearningData | null {
+export function computeViewerLearning(room: Room, viewerId: string): LearningData | null {
   if (!room.settings.learningMode) return null;
   const phase = room.state.phase;
   if (phase !== "preflop" && phase !== "flop" && phase !== "turn" && phase !== "river") return null;
