@@ -1,10 +1,13 @@
 import {
   addPlayer,
   applyAction,
+  computeLivePots,
   newState,
   removePlayer,
   startHand,
   type ActionInput,
+  type AllInEvent,
+  type LivePot,
   type PokerState,
   type RakeMode,
   type RoomConfig,
@@ -101,6 +104,8 @@ export interface PublicState {
   players: PublicPlayer[];
   showdownResults?: PokerState["showdownResults"];
   lastWinnerSummary?: string;
+  livePots: LivePot[];
+  lastAllInEvent: AllInEvent | null;
   yourId: string;
   yourLegalActions: ReturnType<typeof import("./poker").legalActions>;
   isHost: boolean;
@@ -308,6 +313,8 @@ export function publicView(room: Room, viewerId: string): PublicState {
     })),
     showdownResults: room.state.showdownResults,
     lastWinnerSummary: room.state.lastWinnerSummary,
+    livePots: computeLivePots(room.state),
+    lastAllInEvent: room.state.lastAllInEvent,
     yourId: viewerId,
     yourLegalActions: legalActions(room.state, viewerId),
     isHost: room.hostId === viewerId,

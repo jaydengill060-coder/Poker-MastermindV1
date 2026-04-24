@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getSocket } from "./socket";
 import { fmtCents, type ActionInput, type PublicPlayer, type PublicState } from "./types";
 import { PlayingCard } from "@/components/PlayingCard";
+import { AllInBurst } from "./AllInBurst";
 
 interface Props {
   state: PublicState;
@@ -65,6 +66,20 @@ export function MultiTable({ state, onLeave }: Props) {
 
   const [raiseAmt, setRaiseAmt] = useState<number>(opts.minRaiseTo);
   useEffect(() => { if (isMyTurn) setRaiseAmt(opts.minRaiseTo); }, [isMyTurn, opts.minRaiseTo, state.handNumber, state.phase]);
+
+  // Detect new all-in events to trigger the dramatic burst.
+  const lastAllInTsRef = useRef<number>(0);
+  const [allInBurst, setAllInBurst] = useState<{ name: string; amount: number; key: number } | null>(null);
+  useEffect(() => {
+    const ev = state.lastAllInEvent;
+    if (ev && ev.ts > lastAllInTsRef.current) {
+      lastAllInTsRef.current = ev.ts;
+      setAllInBurst({ name: ev.name, amount: ev.amount, key: ev.ts });
+      const t = setTimeout(() => setAllInBurst((cur) => (cur && cur.key === ev.ts ? null : cur)), 2800);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [state.lastAllInEvent]);
 
   const presets = useMemo(() => {
     const minTo = opts.minRaiseTo;
@@ -174,8 +189,22 @@ export function MultiTable({ state, onLeave }: Props) {
             <div className="absolute inset-4 rounded-[100px] border border-emerald-900/50 pointer-events-none" />
 
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-              <div className="text-xs uppercase tracking-widest text-amber-200/60">Pot</div>
+              <div className="text-xs uppercase tracking-widest text-amber-200/60">Total Pot</div>
               <div className="text-3xl font-bold text-amber-300 font-mono">{fmtCents(state.pot)}</div>
+              {state.livePots.length > 1 && state.phase !== "handover" && (
+                <div className="flex flex-wrap justify-center gap-2 max-w-md">
+                  {state.livePots.map((pot, idx) => {
+                    const label = idx === 0 ? "Main" : `Side ${idx}`;
+                    return (
+                      <div key={idx} className="px-2 py-1 rounded-md bg-black/40 border border-amber-300/30 text-[11px] text-amber-100">
+                        <span className="font-bold">{label}</span>{" "}
+                        <span className="font-mono">{fmtCents(pot.amount)}</span>
+                        <span className="text-amber-200/60"> · {pot.eligibleIds.length} eligible</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
               <div className="flex gap-2 mt-2">
                 {Array.from({ length: 5 }).map((_, i) => {
                   const c = state.community[i];
@@ -187,6 +216,17 @@ export function MultiTable({ state, onLeave }: Props) {
               {state.lastWinnerSummary && state.phase === "handover" && (
                 <div className="mt-3 px-4 py-2 rounded-lg bg-amber-300/20 border border-amber-300/40 text-amber-100 text-sm font-semibold text-center max-w-md">
                   {state.lastWinnerSummary}
+                </div>
+              )}
+              {state.phase === "handover" && state.showdownResults && state.showdownResults.length > 1 && (
+                <div className="mt-2 flex flex-col gap-1 text-xs text-amber-100/90">
+                  {state.showdownResults.map((r) => (
+                    <div key={r.potIndex} className="px-2 py-1 rounded bg-black/30 border border-amber-300/20">
+                      <span className="font-bold">{r.potIndex === 0 ? "Main pot" : `Side pot ${r.potIndex}`}</span>{" "}
+                      <span className="font-mono">{fmtCents(r.potAmount)}</span> →{" "}
+                      {r.winners.map((w) => `${w.name} (${fmtCents(w.share)})`).join(", ")}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -335,6 +375,10 @@ export function MultiTable({ state, onLeave }: Props) {
           </div>
         </div>
 
+        {allInBurst && (
+          <AllInBurst key={allInBurst.key} name={allInBurst.name} amount={allInBurst.amount} />
+        )}
+
         {reveal && state.showdownResults && (
           <div className="mt-4 rounded-xl border border-amber-300/30 bg-amber-300/5 p-4">
             <div className="text-xs uppercase tracking-wider text-amber-200/80 mb-2">Showdown</div>
@@ -369,10 +413,18 @@ function SeatCard({ player, state, reveal, isMe }: { player: PublicPlayer; state
   const cards = player.holeCards;
   return (
     <div className={`relative flex flex-col items-center gap-1 px-3 py-2 rounded-xl border transition ${
-      isActive ? "border-amber-400 bg-amber-400/10 shadow-[0_0_20px_rgba(251,191,36,0.3)]" : "border-white/10 bg-black/30"
+      isActive
+        ? "border-amber-300 bg-amber-300/15 shadow-[0_0_28px_8px_rgba(251,191,36,0.55)] animate-[pulse_1.4s_ease-in-out_infinite] scale-[1.04]"
+        : "border-white/10 bg-black/30"
     } ${player.folded ? "opacity-40" : ""} ${player.disconnected ? "ring-1 ring-rose-500/50" : ""}`}>
+      {isActive && (
+        <div className="pointer-events-none absolute -inset-1 rounded-2xl ring-2 ring-amber-300/70 animate-[ping_1.6s_cubic-bezier(0,0,0.2,1)_infinite]" />
+      )}
       {isDealer && (
-        <div className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-amber-300 text-zinc-900 text-xs font-bold flex items-center justify-center border-2 border-zinc-900">
+        <div
+          className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-gradient-to-br from-white to-zinc-200 text-zinc-900 text-sm font-black flex items-center justify-center border-2 border-zinc-900 shadow-[0_2px_8px_rgba(0,0,0,0.6)]"
+          title="Dealer button"
+        >
           D
         </div>
       )}

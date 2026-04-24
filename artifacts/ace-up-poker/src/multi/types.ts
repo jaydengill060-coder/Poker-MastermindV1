@@ -95,6 +95,18 @@ export interface FinalSummary {
   settlements: SettlementTransfer[];
 }
 
+export interface LivePot {
+  amount: number;
+  eligibleIds: string[];
+}
+
+export interface AllInEvent {
+  playerId: string;
+  name: string;
+  amount: number;
+  ts: number;
+}
+
 export interface PublicState {
   code: string;
   hostId: string;
@@ -110,6 +122,8 @@ export interface PublicState {
   players: PublicPlayer[];
   showdownResults?: ShowdownResult[];
   lastWinnerSummary?: string;
+  livePots: LivePot[];
+  lastAllInEvent: AllInEvent | null;
   yourId: string;
   yourLegalActions: LegalActions;
   isHost: boolean;

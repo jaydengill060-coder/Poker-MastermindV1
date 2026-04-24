@@ -36,6 +36,8 @@ export interface ShowdownResult {
   evaluations: ShowdownEval[];
 }
 
+export interface AllInEvent { playerId: string; name: string; amount: number; ts: number; }
+
 export interface PokerState {
   players: Player[];
   community: Card[];
@@ -53,6 +55,7 @@ export interface PokerState {
   handNumber: number;
   showdownResults?: ShowdownResult[];
   lastWinnerSummary?: string;
+  lastAllInEvent: AllInEvent | null;
   // Hidden from clients except their own:
   deck: Card[];
 }
@@ -81,8 +84,35 @@ export function newState(): PokerState {
     phase: "idle",
     log: [],
     handNumber: 0,
+    lastAllInEvent: null,
     deck: [],
   };
+}
+
+export interface LivePot { amount: number; eligibleIds: string[]; }
+
+// Computes main + side pot breakdown from the current totalCommitted of each
+// player. Players who have folded are NOT eligible to win, but their chips
+// still go into the appropriate layer.
+export function computeLivePots(s: PokerState): LivePot[] {
+  const commits = s.players
+    .filter((p) => p.totalCommitted > 0)
+    .map((p) => ({ playerId: p.id, amount: p.totalCommitted, eligible: p.inHand && !p.folded }));
+  if (commits.length === 0) return [];
+  const distinct = Array.from(new Set(commits.map((c) => c.amount))).sort((a, b) => a - b);
+  const pots: LivePot[] = [];
+  let prev = 0;
+  for (const lvl of distinct) {
+    const layer = lvl - prev;
+    const contributors = commits.filter((c) => c.amount >= lvl);
+    const amount = layer * contributors.length;
+    if (amount > 0) {
+      const eligibleIds = contributors.filter((c) => c.eligible).map((c) => c.playerId);
+      pots.push({ amount, eligibleIds: eligibleIds.length > 0 ? eligibleIds : contributors.map((c) => c.playerId) });
+    }
+    prev = lvl;
+  }
+  return pots;
 }
 
 function pushLog(s: PokerState, text: string) {
@@ -154,6 +184,7 @@ export function startHand(s: PokerState, cfg: RoomConfig): void {
   s.handNumber += 1;
   s.showdownResults = undefined;
   s.lastWinnerSummary = undefined;
+  s.lastAllInEvent = null;
 
   // Advance dealer (or initialize)
   if (s.dealerSeat < 0) s.dealerSeat = inHand[0].seat;
@@ -283,7 +314,10 @@ export function applyAction(s: PokerState, playerId: string, action: ActionInput
     case "call": {
       const pay = Math.min(callAmount, p.chips);
       p.chips -= pay; p.bet += pay; p.totalCommitted += pay; s.pot += pay;
-      if (p.chips === 0) p.allIn = true;
+      if (p.chips === 0) {
+        p.allIn = true;
+        s.lastAllInEvent = { playerId: p.id, name: p.name, amount: p.totalCommitted, ts: Date.now() };
+      }
       pushLog(s, `${p.name} calls ${formatCents(pay)}${p.allIn ? " (all-in)" : ""}`);
       break;
     }
@@ -299,7 +333,10 @@ export function applyAction(s: PokerState, playerId: string, action: ActionInput
       const raiseSize = raiseTo - s.currentBet;
       const isFullRaise = raiseSize >= Math.max(s.lastRaiseSize, 50);
       p.chips -= totalDelta; p.bet += totalDelta; p.totalCommitted += totalDelta; s.pot += totalDelta;
-      if (p.chips === 0) p.allIn = true;
+      if (p.chips === 0) {
+        p.allIn = true;
+        s.lastAllInEvent = { playerId: p.id, name: p.name, amount: p.totalCommitted, ts: Date.now() };
+      }
       const wasOpen = s.currentBet === 0;
       if (raiseTo > s.currentBet) {
         if (isFullRaise) {
