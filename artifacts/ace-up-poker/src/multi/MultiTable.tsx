@@ -352,7 +352,7 @@ export function MultiTable({ state, onLeave }: Props) {
                     </button>
                     <button
                       onClick={() => send({ type: opts.canCheck ? "check" : "call" })}
-                      className="btn-press flex-1 py-3 rounded-lg bg-gradient-to-b from-sky-600 to-sky-800 hover:from-sky-500 hover:to-sky-700 text-white font-bold uppercase tracking-wider text-sm chip-shadow"
+                      className="btn-press flex-1 py-3 rounded-lg bg-gradient-to-b from-zinc-600 to-zinc-800 hover:from-zinc-500 hover:to-zinc-700 text-white font-bold uppercase tracking-wider text-sm border border-zinc-500/40 chip-shadow"
                     >
                       {opts.canCheck ? "Check" : `Call ${fmtCents(opts.callAmount)}`}
                     </button>

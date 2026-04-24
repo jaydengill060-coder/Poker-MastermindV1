@@ -32,12 +32,13 @@ export function Lobby({ state, onLeave }: Props) {
   const inviteUrl = `${window.location.origin}${window.location.pathname}?code=${state.code}`;
 
   const onCopy = async () => {
+    if (!navigator.clipboard?.writeText) return;
     try {
-      await navigator.clipboard?.writeText(inviteUrl);
+      await navigator.clipboard.writeText(inviteUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      // ignore
+      // clipboard failed (permission denied, insecure context, etc.) — leave label unchanged
     }
   };
 
