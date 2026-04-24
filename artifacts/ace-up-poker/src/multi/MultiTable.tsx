@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getSocket } from "./socket";
-import { fmtCents, type ActionInput, type PublicPlayer, type PublicState } from "./types";
+import { fmtCents, type ActionInput, type LearningData, type PublicPlayer, type PublicState } from "./types";
 import { PlayingCard } from "@/components/PlayingCard";
 import { AllInBurst } from "./AllInBurst";
 import { TableMood } from "./TableMood";
@@ -405,6 +405,10 @@ export function MultiTable({ state, onLeave }: Props) {
               )}
             </div>
 
+            {state.settings.learningMode && state.yourLearningData && (
+              <CoachPanel data={state.yourLearningData} hasCall={opts.callAmount > 0} />
+            )}
+
             <div className="rounded-2xl border border-white/10 bg-black/40 p-3 max-h-72 overflow-y-auto shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
               <div className="text-[10px] uppercase tracking-[0.25em] text-zinc-400 mb-2">Hand Log</div>
               <div className="space-y-1 text-xs font-mono text-zinc-300">
@@ -517,6 +521,100 @@ function SeatCard({ player, state, reveal, isMe }: { player: PublicPlayer; state
       )}
       {player.disconnected && (
         <div className="text-[10px] uppercase tracking-wider text-rose-300 font-bold">Offline</div>
+      )}
+    </div>
+  );
+}
+
+function CoachPanel({ data, hasCall }: { data: LearningData; hasCall: boolean }) {
+  const [open, setOpen] = useState(true);
+  const equity = data.winPct + data.tiePct / 2;
+  const winW = Math.max(0, Math.min(100, data.winPct));
+  const tieW = Math.max(0, Math.min(100 - winW, data.tiePct));
+  return (
+    <div className="rounded-2xl border border-sky-500/30 bg-gradient-to-b from-sky-950/50 to-black/50 p-4 shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="btn-press w-full flex items-center justify-between gap-2 text-left"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] uppercase tracking-[0.25em] text-sky-300/80 font-bold">
+            Coach
+          </span>
+          <span className="px-1.5 py-0.5 rounded bg-sky-500/15 border border-sky-400/40 text-sky-200 text-[11px] font-semibold">
+            {data.handName}
+          </span>
+        </div>
+        <span className="text-sky-300/70 text-xs select-none">{open ? "Hide ▲" : "Show ▼"}</span>
+      </button>
+
+      {open && (
+        <div className="mt-3 space-y-3">
+          <div>
+            <div className="flex items-center justify-between text-[11px] mb-1">
+              <span className="text-zinc-400">Equity vs random hands</span>
+              <span className="font-mono text-sky-200 font-bold">
+                {equity.toFixed(1)}%
+              </span>
+            </div>
+            <div className="h-2.5 w-full rounded-full bg-black/60 border border-white/5 overflow-hidden flex">
+              <div
+                className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400"
+                style={{ width: `${winW}%` }}
+              />
+              <div
+                className="h-full bg-gradient-to-r from-amber-500 to-amber-400"
+                style={{ width: `${tieW}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between text-[10px] mt-1 text-zinc-500 font-mono">
+              <span>Win <span className="text-emerald-300 font-bold">{data.winPct.toFixed(1)}%</span></span>
+              <span>Tie <span className="text-amber-300 font-bold">{data.tiePct.toFixed(1)}%</span></span>
+            </div>
+          </div>
+
+          {hasCall && (
+            <div className="flex items-center justify-between rounded-lg bg-black/40 border border-white/5 px-3 py-2">
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-zinc-500">Pot odds</div>
+                <div className="text-sm text-zinc-200">
+                  Need <span className="font-mono font-bold text-sky-200">{data.potOddsNeeded.toFixed(1)}%</span> equity
+                </div>
+              </div>
+              <div
+                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded border ${
+                  data.profitable
+                    ? "bg-emerald-500/15 border-emerald-400/50 text-emerald-300"
+                    : "bg-rose-500/15 border-rose-400/50 text-rose-300"
+                }`}
+              >
+                {data.profitable ? "Profitable" : "Unprofitable"}
+              </div>
+            </div>
+          )}
+
+          {data.outs.length > 0 && (
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1.5">Outs</div>
+              <div className="flex flex-wrap gap-1.5">
+                {data.outs.map((o, i) => (
+                  <div
+                    key={i}
+                    className="px-2 py-1 rounded-md bg-black/40 border border-sky-500/20 text-[11px]"
+                  >
+                    <span className="font-mono font-bold text-sky-200">{o.count}</span>
+                    <span className="text-zinc-400"> → </span>
+                    <span className="text-zinc-200">{o.description}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="text-xs text-sky-100/90 leading-snug border-t border-white/5 pt-2.5 italic">
+            {data.coachTip}
+          </div>
+        </div>
       )}
     </div>
   );

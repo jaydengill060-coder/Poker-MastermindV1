@@ -12,6 +12,9 @@ import {
   type RakeMode,
   type RoomConfig,
 } from "./poker";
+import { computeLearningData, type LearningData } from "./learningEngine";
+
+export type { LearningData, LearningOut } from "./learningEngine";
 
 export interface RoomSettings {
   buyInCents: number;
@@ -19,6 +22,7 @@ export interface RoomSettings {
   smallBlindCents: number;
   bigBlindCents: number;
   anteCents: number;
+  learningMode: boolean;
 }
 
 export interface PublicPlayer {
@@ -112,6 +116,7 @@ export interface PublicState {
   endVote: PublicEndGameVote | null;
   gameEnded: boolean;
   finalSummary: FinalSummary | null;
+  yourLearningData: LearningData | null;
 }
 
 export interface Room {
@@ -142,7 +147,7 @@ export function createRoom(opts: { hostId: string; hostName: string; settings: R
   const room: Room = {
     code,
     hostId: opts.hostId,
-    settings: opts.settings,
+    settings: { ...opts.settings, learningMode: !!opts.settings.learningMode },
     state: newState(),
     inGame: false,
     endVote: null,
@@ -254,7 +259,10 @@ export function confirmBuyBackIn(room: Room, playerId: string): { ok: boolean; e
 
 export function updateSettings(room: Room, settings: Partial<RoomSettings>) {
   if (room.inGame) return;
-  room.settings = { ...room.settings, ...settings };
+  const next: RoomSettings = { ...room.settings, ...settings };
+  // Coerce optional boolean (defensive against older clients).
+  next.learningMode = !!next.learningMode;
+  room.settings = next;
   // Update each player's chips to new buy-in if not yet started
   for (const p of room.state.players) p.chips = room.settings.buyInCents;
 }
@@ -321,7 +329,36 @@ export function publicView(room: Room, viewerId: string): PublicState {
     endVote: publicEndVote(room, viewerId),
     gameEnded: room.gameEnded,
     finalSummary: room.finalSummary,
+    yourLearningData: computeViewerLearning(room, viewerId),
   };
+}
+
+function computeViewerLearning(room: Room, viewerId: string): LearningData | null {
+  if (!room.settings.learningMode) return null;
+  const phase = room.state.phase;
+  if (phase !== "preflop" && phase !== "flop" && phase !== "turn" && phase !== "river") return null;
+  // Only render for the player whose turn it actually is — that's the only
+  // moment the call/pot-odds and coach tip are decision-relevant.
+  if (room.state.toActSeat < 0) return null;
+  const me = room.state.players.find((p) => p.id === viewerId);
+  if (!me) return null;
+  if (!me.inHand || me.folded || me.allIn) return null;
+  if (me.holeCards.length < 2) return null;
+  if (room.state.players[room.state.toActSeat]?.id !== viewerId) return null;
+
+  const opponents = room.state.players.filter(
+    (p) => p.id !== viewerId && p.inHand && !p.folded && p.holeCards.length > 0,
+  ).length;
+  const callAmount = Math.max(0, room.state.currentBet - me.bet);
+  const cappedCall = Math.min(callAmount, me.chips);
+
+  return computeLearningData({
+    holeCards: me.holeCards,
+    community: room.state.community,
+    numOpponents: opponents,
+    pot: room.state.pot,
+    callAmount: cappedCall,
+  });
 }
 
 function eligibleVoters(room: Room): { id: string; name: string }[] {

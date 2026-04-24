@@ -31,6 +31,7 @@ export function Home({ onJoined }: Props) {
       smallBlindCents: BLIND_OPTIONS[blindIdx].sb,
       bigBlindCents: BLIND_OPTIONS[blindIdx].bb,
       anteCents: ante,
+      learningMode: false,
     };
     getSocket().emit(
       "create_room",

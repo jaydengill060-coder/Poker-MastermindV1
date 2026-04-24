@@ -190,6 +190,42 @@ export function Lobby({ state, onLeave }: Props) {
                 )}
               </div>
 
+              <div className="sm:col-span-2">
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="text-[10px] uppercase tracking-wider text-zinc-500">Learning Mode</div>
+                  {state.handNumber > 0 && (
+                    <div className="text-[10px] text-zinc-500 italic">Locked once dealt</div>
+                  )}
+                </div>
+                {isHost && state.handNumber === 0 ? (
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={() => update({ learningMode: true })}
+                      className={`flex-1 ${pillBase} ${
+                        settings.learningMode ? pillActive : pillIdle
+                      }`}
+                    >
+                      On
+                    </button>
+                    <button
+                      onClick={() => update({ learningMode: false })}
+                      className={`flex-1 ${pillBase} ${
+                        !settings.learningMode ? pillActive : pillIdle
+                      }`}
+                    >
+                      Off
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-amber-200 text-sm">
+                    {settings.learningMode ? "On — coach panel during your turn" : "Off"}
+                  </div>
+                )}
+                <div className="text-[10px] text-zinc-500 mt-1.5 leading-snug">
+                  Shows each player a private analysis panel (hand, win%, pot odds, outs) on their turn. Must be set before the first hand.
+                </div>
+              </div>
+
               {settings.rakeMode === "blinds" ? (
                 <div className="sm:col-span-2">
                   <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1.5">Blind Levels</div>

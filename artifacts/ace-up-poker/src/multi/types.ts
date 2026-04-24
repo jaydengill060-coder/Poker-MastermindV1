@@ -10,6 +10,22 @@ export interface RoomSettings {
   smallBlindCents: number;
   bigBlindCents: number;
   anteCents: number;
+  learningMode: boolean;
+}
+
+export interface LearningOut {
+  description: string;
+  count: number;
+}
+
+export interface LearningData {
+  handName: string;
+  winPct: number;
+  tiePct: number;
+  outs: LearningOut[];
+  potOddsNeeded: number;
+  profitable: boolean;
+  coachTip: string;
 }
 
 export interface PublicPlayer {
@@ -130,6 +146,7 @@ export interface PublicState {
   endVote: PublicEndGameVote | null;
   gameEnded: boolean;
   finalSummary: FinalSummary | null;
+  yourLearningData: LearningData | null;
 }
 
 export type ActionInput =
