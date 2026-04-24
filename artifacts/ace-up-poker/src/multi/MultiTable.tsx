@@ -75,7 +75,19 @@ export function MultiTable({ state, onLeave }: Props) {
   const opts = state.yourLegalActions;
 
   const [raiseAmt, setRaiseAmt] = useState<number>(opts.minRaiseTo);
-  useEffect(() => { if (isMyTurn) setRaiseAmt(opts.minRaiseTo); }, [isMyTurn, opts.minRaiseTo, state.handNumber, state.phase]);
+  const [raiseInputStr, setRaiseInputStr] = useState<string>(() => (opts.minRaiseTo / 100).toFixed(2));
+  useEffect(() => {
+    if (isMyTurn) {
+      setRaiseAmt(opts.minRaiseTo);
+      setRaiseInputStr((opts.minRaiseTo / 100).toFixed(2));
+    }
+  }, [isMyTurn, opts.minRaiseTo, state.handNumber, state.phase]);
+
+  const setRaiseCents = (cents: number) => {
+    const clamped = Math.max(opts.minRaiseTo, Math.min(opts.maxRaiseTo, cents));
+    setRaiseAmt(clamped);
+    setRaiseInputStr((clamped / 100).toFixed(2));
+  };
 
   const [reviewOpen, setReviewOpen] = useState(false);
   // Auto-close the review modal when a new hand starts so it doesn't linger.
@@ -110,6 +122,8 @@ export function MultiTable({ state, onLeave }: Props) {
       { label: "All-in", to: maxTo },
     ];
   }, [opts.minRaiseTo, opts.maxRaiseTo, state.currentBet, state.pot]);
+
+  const raiseLabel = (to: number) => (state.currentBet === 0 ? `Bet ${fmtCents(to)}` : `Raise ${fmtCents(to)}`);
 
   return (
     <div
@@ -386,7 +400,7 @@ export function MultiTable({ state, onLeave }: Props) {
                       onClick={() => send({ type: state.currentBet === 0 ? "bet" : "raise", raiseTo: raiseAmt })}
                       className="btn-press flex-1 py-3 rounded-lg bg-gradient-to-b from-amber-300 to-amber-500 hover:from-amber-200 hover:to-amber-400 text-zinc-900 font-black uppercase tracking-wider text-sm chip-shadow disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
                     >
-                      {state.currentBet === 0 ? `Bet ${fmtCents(raiseAmt)}` : `Raise ${fmtCents(raiseAmt)}`}
+                      {raiseLabel(raiseAmt)}
                     </button>
                   </div>
                   {opts.canRaise && (
@@ -398,26 +412,35 @@ export function MultiTable({ state, onLeave }: Props) {
                           max={opts.maxRaiseTo}
                           step={1}
                           value={Math.min(opts.maxRaiseTo, Math.max(opts.minRaiseTo, raiseAmt))}
-                          onChange={(e) => setRaiseAmt(Number(e.target.value))}
+                          onChange={(e) => setRaiseCents(Number(e.target.value))}
                           className="flex-1 accent-amber-300"
                         />
-                        <input
-                          type="number"
-                          min={opts.minRaiseTo}
-                          max={opts.maxRaiseTo}
-                          value={raiseAmt}
-                          onChange={(e) => {
-                            const v = Number(e.target.value);
-                            if (!Number.isNaN(v)) setRaiseAmt(Math.max(opts.minRaiseTo, Math.min(opts.maxRaiseTo, v)));
-                          }}
-                          className="w-24 px-2 py-1 rounded bg-black/50 border border-white/10 text-amber-200 text-sm font-mono text-right focus:outline-none focus:border-amber-300"
-                        />
+                        <div className="flex items-center gap-1">
+                          <span className="text-amber-200 text-xs font-mono font-bold">$</span>
+                          <input
+                            type="number"
+                            min={(opts.minRaiseTo / 100).toFixed(2)}
+                            max={(opts.maxRaiseTo / 100).toFixed(2)}
+                            step="0.01"
+                            value={raiseInputStr}
+                            onChange={(e) => {
+                              setRaiseInputStr(e.target.value);
+                              const v = parseFloat(e.target.value);
+                              if (!isNaN(v) && v > 0) {
+                                const cents = Math.round(v * 100);
+                                setRaiseAmt(Math.max(opts.minRaiseTo, Math.min(opts.maxRaiseTo, cents)));
+                              }
+                            }}
+                            onBlur={() => setRaiseInputStr((raiseAmt / 100).toFixed(2))}
+                            className="w-20 px-2 py-1 rounded bg-black/50 border border-white/10 text-amber-200 text-sm font-mono text-right focus:outline-none focus:border-amber-300"
+                          />
+                        </div>
                       </div>
                       <div className="flex gap-1">
                         {presets.map((p) => (
                           <button
                             key={p.label}
-                            onClick={() => setRaiseAmt(p.to)}
+                            onClick={() => setRaiseCents(p.to)}
                             className="btn-press flex-1 px-2 py-1 text-[11px] rounded bg-zinc-800 hover:bg-zinc-700 text-amber-200 border border-white/5 font-semibold uppercase tracking-wider"
                           >
                             {p.label}

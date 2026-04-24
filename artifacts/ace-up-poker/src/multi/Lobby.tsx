@@ -2,6 +2,8 @@ import { useState } from "react";
 import { getSocket } from "./socket";
 import { BLIND_OPTIONS, ANTE_OPTIONS, BUY_IN_OPTIONS, fmtCents, type PublicState, type RakeMode } from "./types";
 
+const EXTENDED_BUY_IN_OPTIONS = [50, 100, 500, 1000, 2500, 5000, 10000];
+
 interface Props {
   state: PublicState;
   onLeave: () => void;
@@ -9,6 +11,7 @@ interface Props {
 
 export function Lobby({ state, onLeave }: Props) {
   const [copied, setCopied] = useState(false);
+  const [buyInStr, setBuyInStr] = useState(() => (state.settings.buyInCents / 100).toFixed(2));
   const isHost = state.isHost;
   const settings = state.settings;
   const blindIdx = BLIND_OPTIONS.findIndex(
@@ -146,21 +149,49 @@ export function Lobby({ state, onLeave }: Props) {
               )}
             </div>
             <div className="grid sm:grid-cols-2 gap-4 rounded-xl border border-white/10 bg-black/30 p-4">
-              <div>
-                <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1.5">Buy-in</div>
+              <div className="sm:col-span-2">
+                <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1.5">Buy-in Amount</div>
                 {isHost ? (
-                  <div className="flex gap-1.5">
-                    {BUY_IN_OPTIONS.map((b) => (
-                      <button
-                        key={b}
-                        onClick={() => update({ buyInCents: b })}
-                        className={`flex-1 ${pillBase} ${
-                          settings.buyInCents === b ? pillActive : pillIdle
-                        }`}
-                      >
-                        {fmtCents(b)}
-                      </button>
-                    ))}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-amber-200 font-mono text-sm font-bold">$</span>
+                      <input
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        value={buyInStr}
+                        onChange={(e) => {
+                          setBuyInStr(e.target.value);
+                          const v = parseFloat(e.target.value);
+                          if (!isNaN(v) && v >= 0.01) update({ buyInCents: Math.round(v * 100) });
+                        }}
+                        onBlur={() => {
+                          const v = parseFloat(buyInStr);
+                          const cents = isNaN(v) || v < 0.01 ? settings.buyInCents : Math.round(v * 100);
+                          setBuyInStr((cents / 100).toFixed(2));
+                          update({ buyInCents: cents });
+                        }}
+                        className="w-32 px-2.5 py-1.5 rounded-lg bg-black/50 border border-white/10 text-amber-200 text-sm font-mono focus:outline-none focus:border-amber-300 transition"
+                        placeholder="0.00"
+                      />
+                      <span className="text-xs text-zinc-500 font-mono">
+                        = {fmtCents(settings.buyInCents)}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {EXTENDED_BUY_IN_OPTIONS.map((b) => (
+                        <button
+                          key={b}
+                          onClick={() => {
+                            setBuyInStr((b / 100).toFixed(2));
+                            update({ buyInCents: b });
+                          }}
+                          className={`${pillBase} px-2.5 ${settings.buyInCents === b ? pillActive : pillIdle}`}
+                        >
+                          {fmtCents(b)}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 ) : (
                   <div className="text-amber-200 font-mono text-lg">{fmtCents(settings.buyInCents)}</div>

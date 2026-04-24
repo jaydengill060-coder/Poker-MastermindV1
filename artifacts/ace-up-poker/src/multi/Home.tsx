@@ -14,6 +14,7 @@ export function Home({ onJoined }: Props) {
   const [tab, setTab] = useState<"create" | "join">("create");
 
   const [buyIn, setBuyIn] = useState(100);
+  const [buyInStr, setBuyInStr] = useState("1.00");
   const [rakeMode, setRakeMode] = useState<RakeMode>("blinds");
   const [blindIdx, setBlindIdx] = useState(0);
   const [ante, setAnte] = useState(50);
@@ -124,21 +125,46 @@ export function Home({ onJoined }: Props) {
           {tab === "create" ? (
             <div className="space-y-4">
               <div>
-                <label className="block text-[10px] uppercase tracking-[0.2em] text-amber-200/80 mb-1.5">Buy-in</label>
-                <div className="grid grid-cols-4 gap-2">
-                  {BUY_IN_OPTIONS.map((b) => (
-                    <button
-                      key={b}
-                      onClick={() => setBuyIn(b)}
-                      className={`btn-press py-2 rounded-lg text-sm font-bold border transition ${
-                        buyIn === b
-                          ? "bg-gradient-to-b from-amber-300 to-amber-500 text-zinc-900 border-amber-200 chip-shadow"
-                          : "bg-black/40 text-zinc-200 border-white/10 hover:border-amber-300/40 hover:bg-black/60"
-                      }`}
-                    >
-                      {fmtCents(b)}
-                    </button>
-                  ))}
+                <label className="block text-[10px] uppercase tracking-[0.2em] text-amber-200/80 mb-1.5">Buy-in Amount</label>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-amber-200 font-mono text-sm font-bold">$</span>
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      value={buyInStr}
+                      onChange={(e) => {
+                        setBuyInStr(e.target.value);
+                        const v = parseFloat(e.target.value);
+                        if (!isNaN(v) && v >= 0.01) setBuyIn(Math.round(v * 100));
+                      }}
+                      onBlur={() => {
+                        const v = parseFloat(buyInStr);
+                        const cents = isNaN(v) || v < 0.01 ? buyIn : Math.round(v * 100);
+                        setBuyIn(cents);
+                        setBuyInStr((cents / 100).toFixed(2));
+                      }}
+                      className="w-32 px-3 py-2 rounded-lg bg-black/50 border border-white/10 text-amber-200 font-mono focus:outline-none focus:border-amber-300 transition"
+                      placeholder="0.00"
+                    />
+                    <span className="text-xs text-zinc-500 font-mono">= {fmtCents(buyIn)}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[50, 100, 500, 1000, 2500, 5000, 10000].map((b) => (
+                      <button
+                        key={b}
+                        onClick={() => { setBuyIn(b); setBuyInStr((b / 100).toFixed(2)); }}
+                        className={`btn-press px-2.5 py-1.5 rounded-lg text-xs font-bold border transition ${
+                          buyIn === b
+                            ? "bg-gradient-to-b from-amber-300 to-amber-500 text-zinc-900 border-amber-200 chip-shadow"
+                            : "bg-black/40 text-zinc-200 border-white/10 hover:border-amber-300/40 hover:bg-black/60"
+                        }`}
+                      >
+                        {fmtCents(b)}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 

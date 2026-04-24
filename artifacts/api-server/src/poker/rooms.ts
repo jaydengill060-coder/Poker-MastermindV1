@@ -291,6 +291,8 @@ export function updateSettings(room: Room, settings: Partial<RoomSettings>) {
   const next: RoomSettings = { ...room.settings, ...settings };
   // Coerce optional boolean (defensive against older clients).
   next.learningMode = !!next.learningMode;
+  // Clamp buy-in to at least 1 cent and ensure it is a whole number.
+  next.buyInCents = Math.max(1, Math.round(next.buyInCents));
   room.settings = next;
   // Update each player's chips to new buy-in if not yet started
   for (const p of room.state.players) p.chips = room.settings.buyInCents;
