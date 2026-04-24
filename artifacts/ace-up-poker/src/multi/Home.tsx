@@ -64,154 +64,179 @@ export function Home({ onJoined }: Props) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6"
-      style={{ background: "radial-gradient(circle at center, #0a3d2a 0%, #051a13 70%)" }}
+    <div
+      className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden"
+      style={{
+        background:
+          "radial-gradient(ellipse at center, #0a3d2a 0%, #051a13 60%, #020a06 100%)",
+      }}
     >
-      <div className="w-full max-w-md bg-zinc-900/85 border border-white/10 rounded-2xl p-8 shadow-2xl backdrop-blur">
-        <div className="text-center mb-6">
-          <h1 className="text-4xl font-bold text-amber-300 tracking-wide">Ace Up Poker</h1>
-          <p className="text-zinc-400 text-sm mt-1">Online No-Limit Texas Hold'em</p>
-        </div>
+      <div className="pointer-events-none absolute inset-0 opacity-30 felt-noise" />
+      <div className="pointer-events-none absolute -top-40 -left-40 w-[28rem] h-[28rem] rounded-full bg-amber-500/10 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-40 -right-40 w-[28rem] h-[28rem] rounded-full bg-emerald-500/10 blur-3xl" />
 
-        <div>
-          <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Your Name</label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Enter your name"
-            maxLength={20}
-            className="w-full px-3 py-2 rounded-md bg-black/40 border border-white/10 text-white focus:outline-none focus:border-amber-300"
-          />
-        </div>
-
-        <div className="flex mt-5 mb-4 rounded-lg overflow-hidden border border-white/10">
-          <button
-            onClick={() => setTab("create")}
-            className={`flex-1 py-2 text-sm font-bold uppercase tracking-wide transition ${
-              tab === "create" ? "bg-amber-400 text-zinc-900" : "bg-black/30 text-zinc-300 hover:bg-black/50"
-            }`}
-          >
-            Host a Lobby
-          </button>
-          <button
-            onClick={() => setTab("join")}
-            className={`flex-1 py-2 text-sm font-bold uppercase tracking-wide transition ${
-              tab === "join" ? "bg-amber-400 text-zinc-900" : "bg-black/30 text-zinc-300 hover:bg-black/50"
-            }`}
-          >
-            Join With Code
-          </button>
-        </div>
-
-        {tab === "create" ? (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Buy-in</label>
-              <div className="grid grid-cols-4 gap-2">
-                {BUY_IN_OPTIONS.map((b) => (
-                  <button
-                    key={b}
-                    onClick={() => setBuyIn(b)}
-                    className={`py-2 rounded-md text-sm font-bold border ${
-                      buyIn === b ? "bg-amber-400 text-zinc-900 border-amber-300" : "bg-black/40 text-white border-white/10 hover:bg-black/60"
-                    }`}
-                  >
-                    {fmtCents(b)}
-                  </button>
-                ))}
-              </div>
+      <div className="relative w-full max-w-md">
+        <div className="absolute -inset-px rounded-2xl bg-gradient-to-br from-amber-300/40 via-amber-200/10 to-emerald-400/30 blur-sm" />
+        <div className="relative bg-zinc-950/85 border border-amber-300/20 rounded-2xl p-8 shadow-[0_25px_60px_rgba(0,0,0,0.6)] backdrop-blur-xl">
+          <div className="text-center mb-7">
+            <div className="inline-flex items-center gap-2 mb-1 text-2xl">
+              <span className="text-rose-500">♥</span>
+              <span className="text-zinc-100">♠</span>
+              <span className="text-rose-500">♦</span>
+              <span className="text-zinc-100">♣</span>
             </div>
+            <h1 className="font-display text-5xl font-bold shimmer-gold leading-none">Ace Up Poker</h1>
+            <p className="text-zinc-400 text-xs mt-2 tracking-[0.3em] uppercase">Online No-Limit Hold&apos;em</p>
+          </div>
 
-            <div>
-              <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Pay Mode</label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => setRakeMode("blinds")}
-                  className={`py-2 rounded-md text-sm font-bold border ${
-                    rakeMode === "blinds" ? "bg-amber-400 text-zinc-900 border-amber-300" : "bg-black/40 text-white border-white/10 hover:bg-black/60"
-                  }`}
-                >
-                  Small / Big Blinds
-                </button>
-                <button
-                  onClick={() => setRakeMode("ante")}
-                  className={`py-2 rounded-md text-sm font-bold border ${
-                    rakeMode === "ante" ? "bg-amber-400 text-zinc-900 border-amber-300" : "bg-black/40 text-white border-white/10 hover:bg-black/60"
-                  }`}
-                >
-                  Flat Ante
-                </button>
-              </div>
-            </div>
+          <div>
+            <label className="block text-[10px] uppercase tracking-[0.2em] text-amber-200/80 mb-1.5">Your Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Enter your name"
+              maxLength={20}
+              className="w-full px-4 py-2.5 rounded-lg bg-black/50 border border-white/10 text-white placeholder:text-zinc-600 focus:outline-none focus:border-amber-300 focus:ring-2 focus:ring-amber-300/20 transition"
+            />
+          </div>
 
-            {rakeMode === "blinds" ? (
+          <div className="flex mt-6 mb-5 rounded-xl overflow-hidden border border-white/10 p-1 bg-black/40">
+            <button
+              onClick={() => setTab("create")}
+              className={`btn-press flex-1 py-2 text-xs font-bold uppercase tracking-[0.15em] rounded-lg transition ${
+                tab === "create" ? "bg-gradient-to-b from-amber-300 to-amber-500 text-zinc-900 chip-shadow" : "text-zinc-400 hover:text-amber-200"
+              }`}
+            >
+              Host a Lobby
+            </button>
+            <button
+              onClick={() => setTab("join")}
+              className={`btn-press flex-1 py-2 text-xs font-bold uppercase tracking-[0.15em] rounded-lg transition ${
+                tab === "join" ? "bg-gradient-to-b from-amber-300 to-amber-500 text-zinc-900 chip-shadow" : "text-zinc-400 hover:text-amber-200"
+              }`}
+            >
+              Join With Code
+            </button>
+          </div>
+
+          {tab === "create" ? (
+            <div className="space-y-4">
               <div>
-                <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Blind Levels</label>
-                <select
-                  value={blindIdx}
-                  onChange={(e) => setBlindIdx(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-md bg-black/40 border border-white/10 text-white"
-                >
-                  {BLIND_OPTIONS.map((b, i) => (
-                    <option key={i} value={i}>{b.label}</option>
-                  ))}
-                </select>
-              </div>
-            ) : (
-              <div>
-                <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Ante per Hand (each player)</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {ANTE_OPTIONS.map((a) => (
+                <label className="block text-[10px] uppercase tracking-[0.2em] text-amber-200/80 mb-1.5">Buy-in</label>
+                <div className="grid grid-cols-4 gap-2">
+                  {BUY_IN_OPTIONS.map((b) => (
                     <button
-                      key={a}
-                      onClick={() => setAnte(a)}
-                      className={`py-2 rounded-md text-sm font-bold border ${
-                        ante === a ? "bg-amber-400 text-zinc-900 border-amber-300" : "bg-black/40 text-white border-white/10 hover:bg-black/60"
+                      key={b}
+                      onClick={() => setBuyIn(b)}
+                      className={`btn-press py-2 rounded-lg text-sm font-bold border transition ${
+                        buyIn === b
+                          ? "bg-gradient-to-b from-amber-300 to-amber-500 text-zinc-900 border-amber-200 chip-shadow"
+                          : "bg-black/40 text-zinc-200 border-white/10 hover:border-amber-300/40 hover:bg-black/60"
                       }`}
                     >
-                      {fmtCents(a)}
+                      {fmtCents(b)}
                     </button>
                   ))}
                 </div>
               </div>
-            )}
 
-            <button
-              onClick={handleCreate}
-              disabled={!canCreate}
-              className="w-full py-3 rounded-lg bg-amber-400 hover:bg-amber-300 active:bg-amber-500 text-zinc-900 font-bold uppercase tracking-wide transition disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {busy ? "Creating..." : "Create Lobby"}
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div>
-              <label className="block text-xs uppercase tracking-wider text-zinc-400 mb-1">Lobby Code</label>
-              <input
-                type="text"
-                value={joinCode}
-                onChange={(e) => setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 5))}
-                placeholder="e.g. K9P3X"
-                className="w-full px-3 py-3 rounded-md bg-black/40 border border-white/10 text-white text-center text-2xl font-mono tracking-[0.5em] uppercase focus:outline-none focus:border-amber-300"
-              />
+              <div>
+                <label className="block text-[10px] uppercase tracking-[0.2em] text-amber-200/80 mb-1.5">Pay Mode</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setRakeMode("blinds")}
+                    className={`btn-press py-2 rounded-lg text-sm font-bold border transition ${
+                      rakeMode === "blinds"
+                        ? "bg-gradient-to-b from-amber-300 to-amber-500 text-zinc-900 border-amber-200 chip-shadow"
+                        : "bg-black/40 text-zinc-200 border-white/10 hover:border-amber-300/40 hover:bg-black/60"
+                    }`}
+                  >
+                    Small / Big Blinds
+                  </button>
+                  <button
+                    onClick={() => setRakeMode("ante")}
+                    className={`btn-press py-2 rounded-lg text-sm font-bold border transition ${
+                      rakeMode === "ante"
+                        ? "bg-gradient-to-b from-amber-300 to-amber-500 text-zinc-900 border-amber-200 chip-shadow"
+                        : "bg-black/40 text-zinc-200 border-white/10 hover:border-amber-300/40 hover:bg-black/60"
+                    }`}
+                  >
+                    Flat Ante
+                  </button>
+                </div>
+              </div>
+
+              {rakeMode === "blinds" ? (
+                <div>
+                  <label className="block text-[10px] uppercase tracking-[0.2em] text-amber-200/80 mb-1.5">Blind Levels</label>
+                  <select
+                    value={blindIdx}
+                    onChange={(e) => setBlindIdx(Number(e.target.value))}
+                    className="w-full px-3 py-2.5 rounded-lg bg-black/50 border border-white/10 text-white focus:outline-none focus:border-amber-300"
+                  >
+                    {BLIND_OPTIONS.map((b, i) => (
+                      <option key={i} value={i}>{b.label}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-[10px] uppercase tracking-[0.2em] text-amber-200/80 mb-1.5">Ante per Hand (each player)</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {ANTE_OPTIONS.map((a) => (
+                      <button
+                        key={a}
+                        onClick={() => setAnte(a)}
+                        className={`btn-press py-2 rounded-lg text-sm font-bold border transition ${
+                          ante === a
+                            ? "bg-gradient-to-b from-amber-300 to-amber-500 text-zinc-900 border-amber-200 chip-shadow"
+                            : "bg-black/40 text-zinc-200 border-white/10 hover:border-amber-300/40 hover:bg-black/60"
+                        }`}
+                      >
+                        {fmtCents(a)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={handleCreate}
+                disabled={!canCreate}
+                className="btn-press w-full py-3.5 rounded-xl bg-gradient-to-b from-amber-300 to-amber-500 hover:from-amber-200 hover:to-amber-400 text-zinc-900 font-black uppercase tracking-[0.2em] text-sm chip-shadow disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
+              >
+                {busy ? "Creating..." : "Create Lobby"}
+              </button>
             </div>
-            <button
-              onClick={handleJoin}
-              disabled={!canJoin}
-              className="w-full py-3 rounded-lg bg-amber-400 hover:bg-amber-300 active:bg-amber-500 text-zinc-900 font-bold uppercase tracking-wide transition disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {busy ? "Joining..." : "Join Lobby"}
-            </button>
-          </div>
-        )}
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[10px] uppercase tracking-[0.2em] text-amber-200/80 mb-1.5">Lobby Code</label>
+                <input
+                  type="text"
+                  value={joinCode}
+                  onChange={(e) => setJoinCode(e.target.value.toUpperCase().replace(/[^A-Z2-9]/g, "").slice(0, 5))}
+                  placeholder="K9P3X"
+                  className="w-full px-3 py-3.5 rounded-lg bg-black/50 border border-white/10 text-amber-200 text-center text-3xl font-mono tracking-[0.5em] uppercase focus:outline-none focus:border-amber-300 focus:ring-2 focus:ring-amber-300/20"
+                />
+              </div>
+              <button
+                onClick={handleJoin}
+                disabled={!canJoin}
+                className="btn-press w-full py-3.5 rounded-xl bg-gradient-to-b from-amber-300 to-amber-500 hover:from-amber-200 hover:to-amber-400 text-zinc-900 font-black uppercase tracking-[0.2em] text-sm chip-shadow disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
+              >
+                {busy ? "Joining..." : "Join Lobby"}
+              </button>
+            </div>
+          )}
 
-        {error && (
-          <div className="mt-4 p-3 rounded-md bg-rose-900/40 border border-rose-700/50 text-rose-200 text-sm">
-            {error}
-          </div>
-        )}
+          {error && (
+            <div className="mt-4 p-3 rounded-lg bg-rose-900/40 border border-rose-700/50 text-rose-200 text-sm">
+              {error}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
