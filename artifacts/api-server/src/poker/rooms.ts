@@ -6,7 +6,9 @@ import {
   removePlayer,
   startHand,
   type ActionInput,
+  type ActionType,
   type AllInEvent,
+  type HandReviewAction,
   type LivePot,
   type PokerState,
   type RakeMode,
@@ -93,6 +95,24 @@ export interface FinalSummary {
   settlements: SettlementTransfer[];
 }
 
+export interface SuggestedReviewAction {
+  type: ActionType;
+  rationale: string;
+}
+
+export interface HandReviewStep {
+  index: number;
+  phase: PokerState["phase"];
+  community: { suit: string; rank: number }[];
+  holeCards: { suit: string; rank: number }[];
+  potBefore: number;
+  callAmount: number;
+  numOpponents: number;
+  action: HandReviewAction;
+  learning: LearningData;
+  suggestedAction: SuggestedReviewAction;
+}
+
 export interface PublicState {
   code: string;
   hostId: string;
@@ -117,6 +137,12 @@ export interface PublicState {
   gameEnded: boolean;
   finalSummary: FinalSummary | null;
   yourLearningData: LearningData | null;
+  yourHandReview: HandReviewStep[] | null;
+}
+
+interface HandReviewCache {
+  handNumber: number;
+  perViewer: Map<string, HandReviewStep[]>;
 }
 
 export interface Room {
@@ -128,6 +154,9 @@ export interface Room {
   endVote: EndGameVote | null;
   gameEnded: boolean;
   finalSummary: FinalSummary | null;
+  // Cached per-viewer hand reviews for the most recent hand. Avoids
+  // re-running Monte Carlo on every state broadcast during handover.
+  handReviewCache?: HandReviewCache;
 }
 
 const rooms = new Map<string, Room>();
@@ -330,7 +359,64 @@ export function publicView(room: Room, viewerId: string): PublicState {
     gameEnded: room.gameEnded,
     finalSummary: room.finalSummary,
     yourLearningData: computeViewerLearning(room, viewerId),
+    yourHandReview: computeViewerHandReview(room, viewerId),
   };
+}
+
+export function computeViewerHandReview(room: Room, viewerId: string): HandReviewStep[] | null {
+  if (!room.settings.learningMode) return null;
+  if (room.state.phase !== "handover") return null;
+  const snaps = room.state.handReviewSnapshots.filter((s) => s.playerId === viewerId);
+  if (snaps.length === 0) return null;
+
+  // Use a per-hand cache so we don't re-run Monte Carlo for every broadcast.
+  const handNumber = room.state.handNumber;
+  if (!room.handReviewCache || room.handReviewCache.handNumber !== handNumber) {
+    room.handReviewCache = { handNumber, perViewer: new Map() };
+  }
+  const cache = room.handReviewCache;
+  const cached = cache.perViewer.get(viewerId);
+  if (cached) return cached;
+
+  const steps: HandReviewStep[] = snaps.map((snap, i) => {
+    const learning = computeLearningData({
+      holeCards: snap.holeCards,
+      community: snap.community,
+      numOpponents: snap.numOpponents,
+      pot: snap.potBefore,
+      callAmount: snap.callAmount,
+    });
+    return {
+      index: i,
+      phase: snap.phase,
+      community: snap.community,
+      holeCards: snap.holeCards,
+      potBefore: snap.potBefore,
+      callAmount: snap.callAmount,
+      numOpponents: snap.numOpponents,
+      action: snap.action,
+      learning,
+      suggestedAction: suggestReviewAction(learning, snap.callAmount),
+    };
+  });
+  cache.perViewer.set(viewerId, steps);
+  return steps;
+}
+
+function suggestReviewAction(learning: LearningData, callAmount: number): SuggestedReviewAction {
+  const equity = learning.winPct + learning.tiePct / 2;
+  const totalOuts = learning.outs.reduce((sum, o) => sum + o.count, 0);
+  if (callAmount > 0) {
+    if (equity >= 70) return { type: "raise", rationale: "Strong hand — raise for value" };
+    if (learning.profitable && equity >= 50) return { type: "raise", rationale: "Ahead and getting odds — raise" };
+    if (learning.profitable) return { type: "call", rationale: "Pot odds favor a call" };
+    if (totalOuts >= 8) return { type: "call", rationale: "Strong draw — borderline call" };
+    return { type: "fold", rationale: "Unprofitable — folding is best" };
+  }
+  if (equity >= 70) return { type: "bet", rationale: "Strong hand — bet for value" };
+  if (equity >= 50) return { type: "bet", rationale: "Decent equity — small bet keeps control" };
+  if (totalOuts > 0) return { type: "check", rationale: "Drawing — checking is fine here" };
+  return { type: "check", rationale: "Weak hand — check and reassess" };
 }
 
 export function computeViewerLearning(room: Room, viewerId: string): LearningData | null {

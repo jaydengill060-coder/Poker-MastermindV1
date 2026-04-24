@@ -38,6 +38,23 @@ export interface ShowdownResult {
 
 export interface AllInEvent { playerId: string; name: string; amount: number; ts: number; }
 
+export interface HandReviewAction {
+  type: ActionType;
+  raiseTo?: number;
+  amount: number; // chips that left the player's stack on this action
+}
+
+export interface HandReviewSnapshot {
+  playerId: string;
+  phase: Phase; // preflop | flop | turn | river when the decision was made
+  community: Card[]; // copy of the board at decision time
+  holeCards: Card[]; // copy of the player's hole cards at decision time
+  potBefore: number; // pot size before this action
+  callAmount: number; // amount the player needed to call (capped at chips)
+  numOpponents: number; // opponents still in the hand with hole cards
+  action: HandReviewAction;
+}
+
 export interface PokerState {
   players: Player[];
   community: Card[];
@@ -56,6 +73,9 @@ export interface PokerState {
   showdownResults?: ShowdownResult[];
   lastWinnerSummary?: string;
   lastAllInEvent: AllInEvent | null;
+  // Per-decision snapshots for the most recent hand. Reset at the start of
+  // each new hand. Used by the post-hand "Hand Review" coach view.
+  handReviewSnapshots: HandReviewSnapshot[];
   // Hidden from clients except their own:
   deck: Card[];
 }
@@ -85,6 +105,7 @@ export function newState(): PokerState {
     log: [],
     handNumber: 0,
     lastAllInEvent: null,
+    handReviewSnapshots: [],
     deck: [],
   };
 }
@@ -118,6 +139,34 @@ export function computeLivePots(s: PokerState): LivePot[] {
 function pushLog(s: PokerState, text: string) {
   s.log.push({ text, ts: Date.now() });
   if (s.log.length > 200) s.log.shift();
+}
+
+function recordHandReview(
+  s: PokerState,
+  playerId: string,
+  ctx: {
+    phase: Phase;
+    community: Card[];
+    holeCards: Card[];
+    potBefore: number;
+    callAmount: number;
+    numOpponents: number;
+  },
+  action: HandReviewAction,
+): void {
+  // Only record decisions made during a real betting round. Showdown/handover
+  // never reach applyAction so this is mostly defensive.
+  if (ctx.phase !== "preflop" && ctx.phase !== "flop" && ctx.phase !== "turn" && ctx.phase !== "river") return;
+  s.handReviewSnapshots.push({
+    playerId,
+    phase: ctx.phase,
+    community: ctx.community,
+    holeCards: ctx.holeCards,
+    potBefore: ctx.potBefore,
+    callAmount: ctx.callAmount,
+    numOpponents: ctx.numOpponents,
+    action,
+  });
 }
 
 export function addPlayer(s: PokerState, opts: { id: string; name: string; chips: number }): Player {
@@ -185,6 +234,7 @@ export function startHand(s: PokerState, cfg: RoomConfig): void {
   s.showdownResults = undefined;
   s.lastWinnerSummary = undefined;
   s.lastAllInEvent = null;
+  s.handReviewSnapshots = [];
 
   // Advance dealer (or initialize)
   if (s.dealerSeat < 0) s.dealerSeat = inHand[0].seat;
@@ -302,14 +352,31 @@ export function applyAction(s: PokerState, playerId: string, action: ActionInput
 
   const callAmount = Math.max(0, s.currentBet - p.bet);
 
+  // Snapshot of board/hole/pot context BEFORE the action is applied. Used to
+  // record this decision for the post-hand review. We compute it here once so
+  // any recursive fall-through (check→call, raise→call/check) still records
+  // correctly using the pre-action context.
+  const reviewCtx = {
+    phase: s.phase,
+    community: s.community.slice(),
+    holeCards: p.holeCards.slice(),
+    potBefore: s.pot,
+    callAmount: Math.min(callAmount, p.chips),
+    numOpponents: s.players.filter(
+      (o) => o.id !== p.id && o.inHand && !o.folded && o.holeCards.length > 0,
+    ).length,
+  };
+
   switch (action.type) {
     case "fold":
       p.folded = true;
       pushLog(s, `${p.name} folds`);
+      recordHandReview(s, p.id, reviewCtx, { type: "fold", amount: 0 });
       break;
     case "check":
       if (callAmount > 0) return applyAction(s, playerId, { type: "call" });
       pushLog(s, `${p.name} checks`);
+      recordHandReview(s, p.id, reviewCtx, { type: "check", amount: 0 });
       break;
     case "call": {
       const pay = Math.min(callAmount, p.chips);
@@ -319,6 +386,7 @@ export function applyAction(s: PokerState, playerId: string, action: ActionInput
         s.lastAllInEvent = { playerId: p.id, name: p.name, amount: p.totalCommitted, ts: Date.now() };
       }
       pushLog(s, `${p.name} calls ${formatCents(pay)}${p.allIn ? " (all-in)" : ""}`);
+      recordHandReview(s, p.id, reviewCtx, { type: "call", amount: pay });
       break;
     }
     case "bet":
@@ -348,6 +416,11 @@ export function applyAction(s: PokerState, playerId: string, action: ActionInput
         s.currentBet = raiseTo;
       }
       pushLog(s, `${p.name} ${wasOpen ? "bets" : "raises to"} ${formatCents(raiseTo)}${p.allIn ? " (all-in)" : ""}`);
+      recordHandReview(s, p.id, reviewCtx, {
+        type: action.type === "allin" ? "allin" : (wasOpen ? "bet" : "raise"),
+        raiseTo,
+        amount: totalDelta,
+      });
       break;
     }
     default:

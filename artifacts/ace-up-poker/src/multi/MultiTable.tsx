@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getSocket } from "./socket";
-import { fmtCents, type ActionInput, type LearningData, type PublicPlayer, type PublicState } from "./types";
+import {
+  fmtCents,
+  type ActionInput,
+  type ActionType,
+  type HandReviewStep,
+  type LearningData,
+  type Phase,
+  type PublicPlayer,
+  type PublicState,
+} from "./types";
 import { PlayingCard } from "@/components/PlayingCard";
 import { AllInBurst } from "./AllInBurst";
 import { TableMood } from "./TableMood";
@@ -67,6 +76,12 @@ export function MultiTable({ state, onLeave }: Props) {
 
   const [raiseAmt, setRaiseAmt] = useState<number>(opts.minRaiseTo);
   useEffect(() => { if (isMyTurn) setRaiseAmt(opts.minRaiseTo); }, [isMyTurn, opts.minRaiseTo, state.handNumber, state.phase]);
+
+  const [reviewOpen, setReviewOpen] = useState(false);
+  // Auto-close the review modal when a new hand starts so it doesn't linger.
+  useEffect(() => { if (state.phase !== "handover") setReviewOpen(false); }, [state.phase, state.handNumber]);
+  const handReview = state.yourHandReview;
+  const canReview = state.phase === "handover" && !!handReview && handReview.length > 0;
 
   // Detect new all-in events to trigger the dramatic burst.
   const lastAllInTsRef = useRef<number>(0);
@@ -318,19 +333,29 @@ export function MultiTable({ state, onLeave }: Props) {
 
             <div className="rounded-2xl border border-white/10 bg-black/40 p-4 shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
               {state.phase === "handover" ? (
-                state.isHost ? (
-                  <button
-                    onClick={startHand}
-                    disabled={!canStartNext}
-                    className="btn-press w-full py-3.5 rounded-xl bg-gradient-to-b from-amber-300 to-amber-500 hover:from-amber-200 hover:to-amber-400 text-zinc-900 font-black uppercase tracking-[0.2em] text-sm chip-shadow disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
-                  >
-                    {canStartNext ? "Deal Next Hand" : "Need 2+ players"}
-                  </button>
-                ) : (
-                  <div className="text-center text-sm text-zinc-400 italic py-3">
-                    Waiting for host to deal next hand
-                  </div>
-                )
+                <div className="space-y-2">
+                  {state.isHost ? (
+                    <button
+                      onClick={startHand}
+                      disabled={!canStartNext}
+                      className="btn-press w-full py-3.5 rounded-xl bg-gradient-to-b from-amber-300 to-amber-500 hover:from-amber-200 hover:to-amber-400 text-zinc-900 font-black uppercase tracking-[0.2em] text-sm chip-shadow disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
+                    >
+                      {canStartNext ? "Deal Next Hand" : "Need 2+ players"}
+                    </button>
+                  ) : (
+                    <div className="text-center text-sm text-zinc-400 italic py-3">
+                      Waiting for host to deal next hand
+                    </div>
+                  )}
+                  {canReview && (
+                    <button
+                      onClick={() => setReviewOpen(true)}
+                      className="btn-press w-full py-2.5 rounded-lg border border-sky-400/50 bg-gradient-to-b from-sky-900/60 to-black/40 hover:from-sky-800/70 hover:to-black/40 text-sky-100 font-bold uppercase tracking-wider text-xs"
+                    >
+                      Review Last Hand ({handReview!.length} {handReview!.length === 1 ? "decision" : "decisions"})
+                    </button>
+                  )}
+                </div>
               ) : !isMyTurn ? (
                 <div className="text-center text-sm text-zinc-400 italic py-3">
                   {state.toActSeat >= 0 && state.players[state.toActSeat]
@@ -430,6 +455,10 @@ export function MultiTable({ state, onLeave }: Props) {
 
         {allInBurst && (
           <AllInBurst key={allInBurst.key} name={allInBurst.name} amount={allInBurst.amount} />
+        )}
+
+        {reviewOpen && handReview && (
+          <HandReviewModal steps={handReview} onClose={() => setReviewOpen(false)} />
         )}
 
         {reveal && state.showdownResults && (
@@ -618,6 +647,217 @@ function CoachPanel({ data, hasCall }: { data: LearningData; hasCall: boolean })
       )}
     </div>
   );
+}
+
+function HandReviewModal({ steps, onClose }: { steps: HandReviewStep[]; onClose: () => void }) {
+  const [active, setActive] = useState(0);
+  const idx = Math.max(0, Math.min(steps.length - 1, active));
+  const step = steps[idx];
+  const phaseLabels: Record<Phase, string> = {
+    idle: "Idle",
+    preflop: "Pre-flop",
+    flop: "Flop",
+    turn: "Turn",
+    river: "River",
+    showdown: "Showdown",
+    handover: "Hand over",
+  };
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl border border-sky-400/40 bg-gradient-to-b from-sky-950/95 to-zinc-950/95 shadow-[0_30px_80px_rgba(0,0,0,0.7)]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="sticky top-0 z-10 flex items-center justify-between gap-3 px-5 py-3 border-b border-sky-400/20 bg-gradient-to-b from-sky-950 to-sky-950/90">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.3em] text-sky-300/80 font-bold">Hand Review</div>
+            <div className="text-sm text-sky-100/80">
+              Step {idx + 1} of {steps.length} · {phaseLabels[step.phase]}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="btn-press px-3 py-1.5 text-xs rounded-md border border-white/15 text-zinc-200 hover:bg-white/5 font-semibold uppercase tracking-wider"
+          >
+            Close
+          </button>
+        </div>
+
+        <div className="px-5 pt-3 pb-2 flex flex-wrap gap-1.5">
+          {steps.map((s, i) => (
+            <button
+              key={s.index}
+              onClick={() => setActive(i)}
+              className={`btn-press px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider border ${
+                i === idx
+                  ? "border-sky-300/80 bg-sky-500/25 text-sky-100"
+                  : "border-white/10 bg-black/40 text-zinc-400 hover:text-zinc-200"
+              }`}
+              title={`${phaseLabels[s.phase]} — ${actionLabel(s.action.type)}`}
+            >
+              {phaseLabels[s.phase]}
+            </button>
+          ))}
+        </div>
+
+        <div className="p-5 pt-2 space-y-4">
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1.5">Board</div>
+            <div className="flex gap-2 flex-wrap">
+              {Array.from({ length: 5 }).map((_, i) => {
+                const c = step.community[i];
+                return c
+                  ? <PlayingCard key={i} card={c} size="md" />
+                  : (
+                    <div
+                      key={i}
+                      className="w-14 h-20 rounded-lg border border-white/5 bg-black/20"
+                      style={{ boxShadow: "inset 0 0 12px rgba(0,0,0,0.4)" }}
+                    />
+                  );
+              })}
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div className="rounded-lg border border-white/10 bg-black/40 p-3">
+              <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1.5">Your hole cards</div>
+              <div className="flex gap-1.5">
+                {step.holeCards.map((c, i) => <PlayingCard key={i} card={c} size="sm" />)}
+              </div>
+              <div className="mt-2 text-[11px] text-zinc-400">
+                vs <span className="text-zinc-200 font-mono font-bold">{step.numOpponents}</span> opponent
+                {step.numOpponents === 1 ? "" : "s"}
+              </div>
+            </div>
+            <div className="rounded-lg border border-white/10 bg-black/40 p-3 text-xs text-zinc-300 space-y-1.5">
+              <div className="flex justify-between">
+                <span className="text-zinc-500">Hand</span>
+                <span className="text-sky-200 font-semibold">{step.learning.handName}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-zinc-500">Pot before</span>
+                <span className="font-mono">{fmtCents(step.potBefore)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-zinc-500">Call amount</span>
+                <span className="font-mono">{step.callAmount > 0 ? fmtCents(step.callAmount) : "—"}</span>
+              </div>
+              {step.callAmount > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-zinc-500">Pot odds needed</span>
+                  <span className="font-mono">{step.learning.potOddsNeeded.toFixed(1)}%</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <ReviewEquityBar data={step.learning} />
+
+          {step.learning.outs.length > 0 && (
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1.5">Outs you had</div>
+              <div className="flex flex-wrap gap-1.5">
+                {step.learning.outs.map((o, i) => (
+                  <div key={i} className="px-2 py-1 rounded-md bg-black/40 border border-sky-500/20 text-[11px]">
+                    <span className="font-mono font-bold text-sky-200">{o.count}</span>
+                    <span className="text-zinc-400"> → </span>
+                    <span className="text-zinc-200">{o.description}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div className="rounded-lg border border-white/10 bg-black/40 p-3">
+              <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">You did</div>
+              <div className="text-base font-bold text-amber-200">{actionLabel(step.action.type)}{actionDetails(step.action)}</div>
+            </div>
+            <div
+              className={`rounded-lg border p-3 ${
+                step.suggestedAction.type === step.action.type
+                  ? "border-emerald-400/50 bg-gradient-to-b from-emerald-900/30 to-emerald-950/10"
+                  : "border-rose-400/50 bg-gradient-to-b from-rose-900/30 to-rose-950/10"
+              }`}
+            >
+              <div className="text-[10px] uppercase tracking-wider text-zinc-500 mb-1">Coach suggested</div>
+              <div className={`text-base font-bold ${
+                step.suggestedAction.type === step.action.type ? "text-emerald-200" : "text-rose-200"
+              }`}>
+                {actionLabel(step.suggestedAction.type)}
+              </div>
+              <div className="text-[11px] text-zinc-400 mt-1 italic leading-snug">
+                {step.suggestedAction.rationale}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center pt-1">
+            <button
+              onClick={() => setActive((i) => Math.max(0, i - 1))}
+              disabled={idx === 0}
+              className="btn-press px-3 py-1.5 text-xs rounded-md border border-white/15 text-zinc-200 hover:bg-white/5 font-semibold uppercase tracking-wider disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              ← Previous
+            </button>
+            <span className="text-[11px] text-zinc-500 font-mono">{idx + 1} / {steps.length}</span>
+            <button
+              onClick={() => setActive((i) => Math.min(steps.length - 1, i + 1))}
+              disabled={idx >= steps.length - 1}
+              className="btn-press px-3 py-1.5 text-xs rounded-md border border-white/15 text-zinc-200 hover:bg-white/5 font-semibold uppercase tracking-wider disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              Next →
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReviewEquityBar({ data }: { data: LearningData }) {
+  const equity = data.winPct + data.tiePct / 2;
+  const winW = Math.max(0, Math.min(100, data.winPct));
+  const tieW = Math.max(0, Math.min(100 - winW, data.tiePct));
+  return (
+    <div>
+      <div className="flex items-center justify-between text-[11px] mb-1">
+        <span className="text-zinc-400">Equity at decision time</span>
+        <span className="font-mono text-sky-200 font-bold">{equity.toFixed(1)}%</span>
+      </div>
+      <div className="h-2.5 w-full rounded-full bg-black/60 border border-white/5 overflow-hidden flex">
+        <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400" style={{ width: `${winW}%` }} />
+        <div className="h-full bg-gradient-to-r from-amber-500 to-amber-400" style={{ width: `${tieW}%` }} />
+      </div>
+      <div className="flex items-center justify-between text-[10px] mt-1 text-zinc-500 font-mono">
+        <span>Win <span className="text-emerald-300 font-bold">{data.winPct.toFixed(1)}%</span></span>
+        <span>Tie <span className="text-amber-300 font-bold">{data.tiePct.toFixed(1)}%</span></span>
+      </div>
+    </div>
+  );
+}
+
+function actionLabel(t: ActionType): string {
+  switch (t) {
+    case "fold": return "Fold";
+    case "check": return "Check";
+    case "call": return "Call";
+    case "bet": return "Bet";
+    case "raise": return "Raise";
+    case "allin": return "All-in";
+  }
+}
+
+function actionDetails(action: { type: ActionType; raiseTo?: number; amount: number }): string {
+  if (action.type === "call" && action.amount > 0) return ` ${fmtCents(action.amount)}`;
+  if ((action.type === "bet" || action.type === "raise" || action.type === "allin") && action.raiseTo) {
+    return ` to ${fmtCents(action.raiseTo)}`;
+  }
+  return "";
 }
 
 // Lay out seats with the local player at the bottom center.

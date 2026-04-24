@@ -123,6 +123,32 @@ export interface AllInEvent {
   ts: number;
 }
 
+export type ActionType = "fold" | "check" | "call" | "bet" | "raise" | "allin";
+
+export interface HandReviewAction {
+  type: ActionType;
+  raiseTo?: number;
+  amount: number;
+}
+
+export interface SuggestedReviewAction {
+  type: ActionType;
+  rationale: string;
+}
+
+export interface HandReviewStep {
+  index: number;
+  phase: Phase;
+  community: Card[];
+  holeCards: Card[];
+  potBefore: number;
+  callAmount: number;
+  numOpponents: number;
+  action: HandReviewAction;
+  learning: LearningData;
+  suggestedAction: SuggestedReviewAction;
+}
+
 export interface PublicState {
   code: string;
   hostId: string;
@@ -147,6 +173,7 @@ export interface PublicState {
   gameEnded: boolean;
   finalSummary: FinalSummary | null;
   yourLearningData: LearningData | null;
+  yourHandReview: HandReviewStep[] | null;
 }
 
 export type ActionInput =
