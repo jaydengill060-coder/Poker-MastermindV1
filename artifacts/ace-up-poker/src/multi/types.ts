@@ -159,6 +159,8 @@ export interface PublicState {
   currentBet: number;
   toActSeat: number;
   dealerSeat: number;
+  sbSeat: number;
+  bbSeat: number;
   handNumber: number;
   log: { text: string; ts: number }[];
   players: PublicPlayer[];

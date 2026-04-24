@@ -66,6 +66,8 @@ export interface PokerState {
   ante: number;
   rakeMode: RakeMode;
   dealerSeat: number;
+  sbSeat: number; // -1 when ante mode or no active hand
+  bbSeat: number; // -1 when ante mode or no active hand
   toActSeat: number; // -1 when none
   phase: Phase;
   log: ActionLogEntry[];
@@ -100,6 +102,8 @@ export function newState(): PokerState {
     ante: 0,
     rakeMode: "blinds",
     dealerSeat: -1,
+    sbSeat: -1,
+    bbSeat: -1,
     toActSeat: -1,
     phase: "idle",
     log: [],
@@ -247,6 +251,8 @@ export function startHand(s: PokerState, cfg: RoomConfig): void {
 
   if (s.rakeMode === "ante") {
     // Each player posts ante
+    s.sbSeat = -1;
+    s.bbSeat = -1;
     for (const p of inHand) {
       const amt = Math.min(s.ante, p.chips);
       p.chips -= amt;
@@ -269,6 +275,8 @@ export function startHand(s: PokerState, cfg: RoomConfig): void {
       sbSeat = nextSeated(s, s.dealerSeat);
       bbSeat = nextSeated(s, sbSeat);
     }
+    s.sbSeat = sbSeat;
+    s.bbSeat = bbSeat;
     postBlind(s, sbSeat, s.smallBlind, "small blind");
     postBlind(s, bbSeat, s.bigBlind, "big blind");
     s.currentBet = s.bigBlind;

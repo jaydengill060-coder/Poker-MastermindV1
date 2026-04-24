@@ -123,6 +123,8 @@ export interface PublicState {
   currentBet: number;
   toActSeat: number;
   dealerSeat: number;
+  sbSeat: number;
+  bbSeat: number;
   handNumber: number;
   log: { text: string; ts: number }[];
   players: PublicPlayer[];
@@ -328,6 +330,8 @@ export function publicView(room: Room, viewerId: string): PublicState {
     currentBet: room.state.currentBet,
     toActSeat: room.state.toActSeat,
     dealerSeat: room.state.dealerSeat,
+    sbSeat: room.state.sbSeat,
+    bbSeat: room.state.bbSeat,
     handNumber: room.state.handNumber,
     log: room.state.log.slice(-50),
     players: room.state.players.map((p) => ({

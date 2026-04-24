@@ -92,6 +92,19 @@ export function MultiTable({ state, onLeave }: Props) {
   const [reviewOpen, setReviewOpen] = useState(false);
   // Auto-close the review modal when a new hand starts so it doesn't linger.
   useEffect(() => { if (state.phase !== "handover") setReviewOpen(false); }, [state.phase, state.handNumber]);
+
+  // Brief "Shuffling & Dealing..." overlay each time a new hand starts.
+  const prevHandRef = useRef<number>(state.handNumber);
+  const [shuffling, setShuffling] = useState(false);
+  useEffect(() => {
+    if (state.handNumber > 0 && state.handNumber !== prevHandRef.current) {
+      prevHandRef.current = state.handNumber;
+      setShuffling(true);
+      const t = setTimeout(() => setShuffling(false), 750);
+      return () => clearTimeout(t);
+    }
+    return undefined;
+  }, [state.handNumber]);
   const handReview = state.yourHandReview;
   const canReview = state.phase === "handover" && !!handReview && handReview.length > 0;
 
@@ -248,11 +261,25 @@ export function MultiTable({ state, onLeave }: Props) {
             <div className="absolute inset-4 rounded-[100px] border border-amber-300/15 pointer-events-none" />
             <div className="absolute inset-6 rounded-[95px] border border-emerald-900/30 pointer-events-none" />
 
+            {shuffling && (
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 rounded-[108px] bg-black/70 backdrop-blur-[2px] pointer-events-none">
+                <div className="text-amber-300 text-2xl font-bold tracking-widest animate-pulse">
+                  🃏 Shuffling & Dealing...
+                </div>
+              </div>
+            )}
+
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
               <div className="text-[10px] uppercase tracking-[0.4em] text-amber-200/70">Total Pot</div>
               <div className="text-4xl font-bold text-amber-300 font-mono drop-shadow-[0_2px_8px_rgba(251,191,36,0.4)]">
                 {fmtCents(state.pot)}
               </div>
+              {state.currentBet > 0 && state.phase !== "handover" && state.phase !== "idle" && (
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/50 border border-amber-300/30 text-xs font-mono">
+                  <span className="text-zinc-400 uppercase tracking-wide text-[10px]">To call</span>
+                  <span className="text-amber-200 font-bold">{fmtCents(state.currentBet)}</span>
+                </div>
+              )}
               {state.livePots.length > 1 && state.phase !== "handover" && (
                 <div className="flex flex-wrap justify-center gap-2 max-w-md">
                   {state.livePots.map((pot, idx) => {
@@ -305,7 +332,7 @@ export function MultiTable({ state, onLeave }: Props) {
                 className="absolute z-10"
                 style={{ left: `${positions[i].x}%`, top: `${positions[i].y}%`, transform: "translate(-50%, -50%)" }}
               >
-                <SeatCard player={p} state={state} reveal={reveal} isMe={p.id === state.yourId} />
+                <SeatCard player={p} state={state} reveal={reveal} isMe={p.id === state.yourId} sbSeat={state.sbSeat} bbSeat={state.bbSeat} />
               </div>
             ))}
           </div>
@@ -521,8 +548,10 @@ export function MultiTable({ state, onLeave }: Props) {
   );
 }
 
-function SeatCard({ player, state, reveal, isMe }: { player: PublicPlayer; state: PublicState; reveal: boolean; isMe: boolean }) {
+function SeatCard({ player, state, reveal, isMe, sbSeat, bbSeat }: { player: PublicPlayer; state: PublicState; reveal: boolean; isMe: boolean; sbSeat: number; bbSeat: number }) {
   const isDealer = state.dealerSeat === player.seat;
+  const isSmallBlind = sbSeat === player.seat;
+  const isBigBlind = bbSeat === player.seat;
   const isActive = state.toActSeat === player.seat;
   const showCards = isMe || (reveal && player.inHand && !player.folded);
   const cards = player.holeCards;
@@ -543,6 +572,30 @@ function SeatCard({ player, state, reveal, isMe }: { player: PublicPlayer; state
           title="Dealer button"
         >
           D
+        </div>
+      )}
+      {isSmallBlind && !isDealer && (
+        <div
+          className="absolute -bottom-2 -left-2 w-7 h-7 rounded-full bg-gradient-to-br from-sky-400 to-sky-600 text-white text-[10px] font-black flex items-center justify-center border-2 border-sky-900 shadow-[0_2px_6px_rgba(0,0,0,0.6)]"
+          title="Small blind"
+        >
+          SB
+        </div>
+      )}
+      {isSmallBlind && isDealer && (
+        <div
+          className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-gradient-to-br from-sky-400 to-sky-600 text-white text-[10px] font-black flex items-center justify-center border-2 border-sky-900 shadow-[0_2px_6px_rgba(0,0,0,0.6)]"
+          title="Small blind (dealer)"
+        >
+          SB
+        </div>
+      )}
+      {isBigBlind && (
+        <div
+          className="absolute -bottom-2 -left-2 w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-violet-700 text-white text-[10px] font-black flex items-center justify-center border-2 border-violet-900 shadow-[0_2px_6px_rgba(0,0,0,0.6)]"
+          title="Big blind"
+        >
+          BB
         </div>
       )}
       <div className="flex gap-1">

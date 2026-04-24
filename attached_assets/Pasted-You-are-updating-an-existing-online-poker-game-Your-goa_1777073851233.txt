@@ -1,0 +1,61 @@
+You are updating an existing online poker game. Your goal is to IMPLEMENT and ENSURE the following features are present and working correctly, WITHOUT breaking or interfering with any existing functionality.
+
+CRITICAL RULES:
+
+Do NOT remove or overwrite existing working logic unless absolutely necessary.
+If any requested feature is already implemented and functioning correctly, DO NOT modify or replace it.
+Extend the current system instead of replacing it.
+Preserve all current game mechanics, player data, and flow.
+If changes are required, make them modular, minimal, and reversible.
+Avoid refactoring unrelated parts of the codebase.
+After implementation, re-check the entire game flow for bugs or inconsistencies.
+
+FEATURES TO IMPLEMENT / VERIFY:
+
+CLEAR TABLE STATE
+Ensure the UI always clearly displays:
+Pot size (updates in real time)
+Current bet to call
+Each player’s chip stack
+Dealer button, small blind, and big blind positions (visually marked)
+Current player’s turn (clearly highlighted)
+REALISTIC DEALING & ACTION FLOW
+Cards must be dealt one at a time in correct order (not instantly all at once)
+Add slight, consistent delays between dealing actions
+Community cards must be revealed in stages: flop (3), turn (1), river (1)
+SHOWDOWN CLARITY
+At the end of each hand, reveal all remaining players’ cards clearly
+Display the winning hand type (e.g., Pair, Flush, Straight)
+Clearly indicate WHY the winning hand beats others
+Highlight the winner visually
+POSITION ROTATION
+Ensure dealer button rotates correctly after every hand
+Ensure small blind and big blind positions update accordingly
+Maintain correct order of play based on positions
+SHUFFLE / DEAL TRANSPARENCY (LIGHTWEIGHT)
+Add a brief “shuffling” state or indicator before cards are dealt
+Ensure randomness uses a secure method if not already implemented
+Do NOT alter core logic unless randomness is clearly insecure
+CONSISTENCY
+Ensure timing (delays, dealing, actions) is consistent across all hands
+Remove any irregular or “instant” behaviors that break realism
+Ensure no feature behaves differently under specific conditions (e.g., big pots)
+
+SAFETY & VERIFICATION:
+
+After implementing all features, run a full simulation of multiple hands
+Check for:
+Broken game flow
+Incorrect turn order
+UI desync issues
+Missing or incorrect updates (pot, stacks, bets)
+Fix any issues found before finalizing
+
+OUTPUT REQUIREMENTS:
+
+Clearly state what was added or modified
+Explicitly confirm that existing features were preserved and not overwritten
+Identify any features that were already present and left unchanged
+Highlight any assumptions made
+
+Your priority is to ENHANCE realism and clarity while maintaining full system stability.
