@@ -95,12 +95,13 @@ export function MultiTable({ state, onLeave }: Props) {
 
   // Brief "Shuffling & Dealing..." overlay each time a new hand starts.
   const prevHandRef = useRef<number>(state.handNumber);
+  const SHUFFLE_MS = 1100;
   const [shuffling, setShuffling] = useState(false);
   useEffect(() => {
     if (state.handNumber > 0 && state.handNumber !== prevHandRef.current) {
       prevHandRef.current = state.handNumber;
       setShuffling(true);
-      const t = setTimeout(() => setShuffling(false), 750);
+      const t = setTimeout(() => setShuffling(false), SHUFFLE_MS);
       return () => clearTimeout(t);
     }
     return undefined;
@@ -262,10 +263,33 @@ export function MultiTable({ state, onLeave }: Props) {
             <div className="absolute inset-6 rounded-[95px] border border-emerald-900/30 pointer-events-none" />
 
             {shuffling && (
-              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 rounded-[108px] bg-black/70 backdrop-blur-[2px] pointer-events-none">
-                <div className="text-amber-300 text-2xl font-bold tracking-widest animate-pulse">
-                  🃏 Shuffling & Dealing...
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 rounded-[108px] bg-black/75 backdrop-blur-[3px] pointer-events-none">
+                {/* Riffle shuffle visual – left half */}
+                <div className="relative flex items-center justify-center" style={{ height: 80, width: 220 }}>
+                  {([-28,-18,-8,8,18,28] as const).map((offset, i) => {
+                    const isLeft = i < 3;
+                    return (
+                      <div
+                        key={i}
+                        className="absolute w-10 h-14 rounded-lg border border-amber-300/25 shadow-[0_4px_10px_rgba(0,0,0,0.6)] overflow-hidden"
+                        style={{
+                          left: `calc(50% + ${offset}px - 20px)`,
+                          top: 0,
+                          zIndex: i,
+                          background: "linear-gradient(135deg, #4a1a2e 0%, #6b2440 50%, #4a1a2e 100%)",
+                          animation: `${isLeft ? "shuffleLeft" : "shuffleRight"} 0.55s cubic-bezier(0.4,0,0.6,1) ${i * 35}ms both`,
+                          animationIterationCount: "infinite",
+                        }}
+                      >
+                        <div
+                          className="absolute inset-1 rounded-md border border-amber-300/20"
+                          style={{ background: "repeating-linear-gradient(45deg, rgba(251,191,36,0.08) 0 4px, transparent 4px 9px), repeating-linear-gradient(-45deg, rgba(251,191,36,0.06) 0 4px, transparent 4px 9px)" }}
+                        />
+                      </div>
+                    );
+                  })}
                 </div>
+                <div className="text-amber-200/80 text-sm font-semibold tracking-[0.25em] uppercase">Shuffling & Dealing</div>
               </div>
             )}
 
@@ -297,8 +321,17 @@ export function MultiTable({ state, onLeave }: Props) {
               <div className="flex gap-2 mt-3">
                 {Array.from({ length: 5 }).map((_, i) => {
                   const c = state.community[i];
+                  // Flop cards 0-2 stagger by 120ms each; turn/river are singleton reveals
+                  const communityDelay = i < 3 ? i * 120 : 0;
                   return c
-                    ? <PlayingCard key={i} card={c} size="md" />
+                    ? (
+                      <div
+                        key={`${state.handNumber}-comm-${i}`}
+                        style={{ animation: `communityDealIn 0.42s cubic-bezier(0.22,0.61,0.36,1) ${communityDelay}ms both` }}
+                      >
+                        <PlayingCard card={c} size="md" />
+                      </div>
+                    )
                     : (
                       <div
                         key={i}
@@ -326,15 +359,31 @@ export function MultiTable({ state, onLeave }: Props) {
               )}
             </div>
 
-            {state.players.map((p, i) => (
-              <div
-                key={p.id}
-                className="absolute z-10"
-                style={{ left: `${positions[i].x}%`, top: `${positions[i].y}%`, transform: "translate(-50%, -50%)" }}
-              >
-                <SeatCard player={p} state={state} reveal={reveal} isMe={p.id === state.yourId} sbSeat={state.sbSeat} bbSeat={state.bbSeat} />
-              </div>
-            ))}
+            {(() => {
+              // Build deal-order map: inHand players sorted by seat get indices 0,1,2…
+              const inHandSorted = [...state.players].filter(p => p.inHand).sort((a, b) => a.seat - b.seat);
+              const dealOrderMap = new Map(inHandSorted.map((p, idx) => [p.id, idx]));
+              const numInHand = inHandSorted.length;
+              return state.players.map((p, i) => (
+                <div
+                  key={p.id}
+                  className="absolute z-10"
+                  style={{ left: `${positions[i].x}%`, top: `${positions[i].y}%`, transform: "translate(-50%, -50%)" }}
+                >
+                  <SeatCard
+                    player={p}
+                    state={state}
+                    reveal={reveal}
+                    isMe={p.id === state.yourId}
+                    sbSeat={state.sbSeat}
+                    bbSeat={state.bbSeat}
+                    dealOrder={dealOrderMap.get(p.id) ?? 0}
+                    numInHand={numInHand}
+                    handKey={state.handNumber}
+                  />
+                </div>
+              ));
+            })()}
           </div>
 
           <div className="space-y-3">
@@ -548,7 +597,11 @@ export function MultiTable({ state, onLeave }: Props) {
   );
 }
 
-function SeatCard({ player, state, reveal, isMe, sbSeat, bbSeat }: { player: PublicPlayer; state: PublicState; reveal: boolean; isMe: boolean; sbSeat: number; bbSeat: number }) {
+function SeatCard({ player, state, reveal, isMe, sbSeat, bbSeat, dealOrder, numInHand, handKey }: {
+  player: PublicPlayer; state: PublicState; reveal: boolean; isMe: boolean;
+  sbSeat: number; bbSeat: number;
+  dealOrder: number; numInHand: number; handKey: number;
+}) {
   const isDealer = state.dealerSeat === player.seat;
   const isSmallBlind = sbSeat === player.seat;
   const isBigBlind = bbSeat === player.seat;
@@ -601,8 +654,29 @@ function SeatCard({ player, state, reveal, isMe, sbSeat, bbSeat }: { player: Pub
       <div className="flex gap-1">
         {!player.hasHoleCards ? <div className="h-14" /> :
           (showCards && cards
-            ? cards.map((c, i) => <PlayingCard key={i} card={c} size="sm" />)
-            : Array.from({ length: 2 }).map((_, i) => <PlayingCard key={i} faceDown size="sm" />))
+            ? cards.map((c, ci) => {
+                // Round-robin deal delay: card 0 → all seats first, card 1 → all seats second
+                const delayMs = 1100 + (ci * numInHand + dealOrder) * 180;
+                return (
+                  <div
+                    key={`${handKey}-${ci}`}
+                    style={{ animation: `cardDealIn 0.38s cubic-bezier(0.22,0.61,0.36,1) ${delayMs}ms both` }}
+                  >
+                    <PlayingCard card={c} size="sm" />
+                  </div>
+                );
+              })
+            : Array.from({ length: 2 }).map((_, ci) => {
+                const delayMs = 1100 + (ci * numInHand + dealOrder) * 180;
+                return (
+                  <div
+                    key={`${handKey}-back-${ci}`}
+                    style={{ animation: `cardDealIn 0.38s cubic-bezier(0.22,0.61,0.36,1) ${delayMs}ms both` }}
+                  >
+                    <PlayingCard faceDown size="sm" />
+                  </div>
+                );
+              }))
         }
       </div>
       <div className="text-sm font-semibold text-white text-center leading-tight max-w-[110px] truncate">
