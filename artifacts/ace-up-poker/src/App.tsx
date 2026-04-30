@@ -15,21 +15,16 @@ export default function App() {
     const s = getSocket();
     const onState = (next: PublicState) => setState(next);
     const onConnect = () => {
-  setConnected(true);
-  if (joined) {
-    s.emit("request_state");
-  }
-};
-  // On reconnect, ask server to resend current room state
-  if (joined) {
-    s.emit("rejoinRoom");
-  }
-};
-const onDisconnect = () => setConnected(false);
-s.on("state", onState);
-s.on("connect", onConnect);
-s.on("disconnect", onDisconnect);
-if (s.connected) setConnected(true);
+      setConnected(true);
+      if (joined) {
+        s.emit("request_state");
+      }
+    };
+    const onDisconnect = () => setConnected(false);
+    s.on("state", onState);
+    s.on("connect", onConnect);
+    s.on("disconnect", onDisconnect);
+    if (s.connected) setConnected(true);
     return () => {
       s.off("state", onState);
       s.off("connect", onConnect);
