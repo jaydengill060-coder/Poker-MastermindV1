@@ -202,6 +202,8 @@ export function attachSocket(http: HttpServer): IOServer {
   socket.join(room.code);
   broadcast(io, room.code);
 });
+
+socket.on("disconnect", () => {
       // Only mark disconnected if no OTHER socket for the same playerId is still
       // connected (e.g. a second tab). Check after a short delay so that a
       // reconnecting socket gets a chance to register first.
