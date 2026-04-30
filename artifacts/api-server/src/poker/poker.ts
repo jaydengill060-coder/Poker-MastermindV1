@@ -338,7 +338,8 @@ function nextActiveAfter(s: PokerState, fromSeat: number): number {
 
 export function legalActions(s: PokerState, playerId: string) {
   const p = s.players.find((pl) => pl.id === playerId);
-  if (!p || p.folded || p.allIn || s.toActSeat < 0 || seatPlayer(s, s.toActSeat).id !== playerId) {
+  const actingSeat = seatPlayer(s, s.toActSeat);
+if (!p || p.folded || p.allIn || s.toActSeat < 0 || !actingSeat || actingSeat.id !== playerId) {
     return { canFold: false, canCheck: false, canCall: false, callAmount: 0, canRaise: false, minRaiseTo: 0, maxRaiseTo: 0 };
   }
   const callAmount = Math.max(0, s.currentBet - p.bet);
