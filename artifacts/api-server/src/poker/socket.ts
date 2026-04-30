@@ -23,9 +23,6 @@ import {
 import type { ActionInput } from "./poker";
 import { logger } from "../lib/logger";
 
-// 20s grace period — only used after the game has been formally ended.
-// While the game is still in progress, players are NEVER auto-evicted, so
-// they can reconnect at any time and resume their seat & chips.
 const POST_GAME_EVICT_MS = 20_000;
 
 function pidOf(socket: Socket): string {
@@ -39,17 +36,12 @@ export function attachSocket(http: HttpServer): IOServer {
   });
 
   io.on("connection", (socket: Socket) => {
-    // Stable per-browser identity. Falls back to socket.id if missing
-    // (e.g. older client). The player record uses this ID as its key, so
-    // reconnections from the same browser always restore the same seat.
     const auth = (socket.handshake.auth ?? {}) as { clientId?: string };
     const playerId = (typeof auth.clientId === "string" && auth.clientId.length > 0) ? auth.clientId : socket.id;
     socket.data.playerId = playerId;
 
     logger.info({ socketId: socket.id, playerId }, "socket connected");
 
-    // If this player was already in a room, restore them and re-join the
-    // socket.io room so they get state updates without any client action.
     const existing = getRoomByPlayerId(playerId);
     if (existing) {
       markDisconnected(playerId, false);
@@ -84,7 +76,6 @@ export function attachSocket(http: HttpServer): IOServer {
       payload: { code: string; name: string },
       cb: (res: { ok: boolean; code?: string; error?: string }) => void,
     ) => {
-      // If already seated in the same room, treat as a soft reconnect.
       const cur = getRoomByPlayerId(playerId);
       if (cur && cur.code === (payload.code || "").toUpperCase()) {
         markDisconnected(playerId, false);
@@ -120,7 +111,6 @@ export function attachSocket(http: HttpServer): IOServer {
       const seated = room.state.players.filter((p) => p.chips > 0 && !p.disconnected);
       if (seated.length < 2) return cb?.({ ok: false, error: "Need at least 2 players with chips" });
       dealNextHand(room);
-      // In case any seated-but-disconnected player ends up to-act somehow.
       autoActDisconnected(room);
       broadcast(io, room.code);
       cb?.({ ok: true });
@@ -130,7 +120,6 @@ export function attachSocket(http: HttpServer): IOServer {
       const room = getRoomByPlayerId(playerId);
       if (!room) return cb?.({ ok: false, error: "not in a room" });
       const result = applyPlayerAction(room, playerId, payload);
-      // After your action, advance through any disconnected players.
       autoActDisconnected(room);
       broadcast(io, room.code);
       cb?.(result);
@@ -197,24 +186,18 @@ export function attachSocket(http: HttpServer): IOServer {
     });
 
     socket.on("request_state", () => {
-  const room = getRoomByPlayerId(playerId);
-  if (!room) return;
-  socket.join(room.code);
-  broadcast(io, room.code);
-});
+      const room = getRoomByPlayerId(playerId);
+      if (!room) return;
+      socket.join(room.code);
+      broadcast(io, room.code);
+    });
 
-socket.on("disconnect", () => {
-      // Only mark disconnected if no OTHER socket for the same playerId is still
-      // connected (e.g. a second tab). Check after a short delay so that a
-      // reconnecting socket gets a chance to register first.
+    socket.on("disconnect", () => {
       logger.info({ socketId: socket.id, playerId }, "socket disconnected");
       setTimeout(() => {
         if (anySocketForPlayer(io, playerId)) return;
         const room = markDisconnected(playerId, true);
         if (room) broadcast(io, room.code);
-        // Only auto-evict AFTER the game has been formally ended (so they
-        // don't linger in a dead room forever). While the game is still
-        // running, never kick — they can come back at any time.
         setTimeout(() => {
           if (anySocketForPlayer(io, playerId)) return;
           const r = getRoomByPlayerId(playerId);
