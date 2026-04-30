@@ -16,6 +16,10 @@ export default function App() {
     const onState = (next: PublicState) => setState(next);
     const onConnect = () => {
   setConnected(true);
+  if (joined) {
+    s.emit("request_state");
+  }
+};
   // On reconnect, ask server to resend current room state
   if (joined) {
     s.emit("rejoinRoom");
